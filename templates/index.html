@@ -5,31 +5,107 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>zachify.in</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
-    <h1>zachify.in</h1>
-    <p>your one-stop shop for all your needs!</p>
-    <h2>Categories</h2>
-    <ul>
-        <li>Electronics</li>
-        <li>Fashion</li>
-        <li>Home & Kitchen</li>
-        <li>Books</li>
-        <li>Sports & Outdoors</li>
-    </ul>
-   <h3>Featured Products</h3>
-    <ul>
-        <li>laptop</li>
-        <li>smartphone</li>
-        <li>headphones</li>
-        <li>tablet</li>
-        <li>smartwatch</li>
-    </ul>
-<h3>contact</h3>
-<p>Email: info@zachify.in</p>
-<p>Phone: +91 9876543210</p>
+    <nav>
+        <div class="logo">
+            <h2>Zachify store</h2>
+        </div>
+
+        <ul class="nav-links">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Products</a></li>
+            <li><a href="#">Categories</a></li>
+            <li><a href="#">Contact</a></li>
+            <li><a href="#">Login</a></li>
+            <li><a href="#">about</a></li>
+        </ul>
+    </nav>
+
+   <section class="hero">
+
+    <h1>SHOP SMART. SHOP FAST.</h1>
+
+    <p>
+        Discover amazing products at unbeatable prices.
+    </p>
+
+    <button text allign="center"s>Shop Now</button>
+
+</section>
+
+<section class="products">
+
+    <h2>Featured Products</h2>
+
+    <div class="product-container">
+
+        <div class="card">
+
+            <div class="emoji">💻</div>
+
+            <h3>Laptop</h3>
+
+            <p>₹55,000</p>
+
+            <button>Buy Now</button>
+
+        </div>
+
+        <div class="card">
+
+            <div class="emoji">⌚</div>
+
+            <h3>Smart Watch</h3>
+
+            <p>₹4,999</p>
+
+            <button>Buy Now</button>
+
+        </div>
+
+        <div class="card">
+
+            <div class="emoji">🎧</div>
+
+            <h3>Headphones</h3>
+
+            <p>₹2,499</p>
+
+            <button>Buy Now</button>
+
+        </div>
+
+        <div class="card">
+
+            <div class="emoji">📱</div>
+
+            <h3>Smartphone</h3>
+
+            <p>₹18,999</p>
+
+             <button class="green-btn">View Details</button>
+
+        </div>
+
+        <div class="card">
+
+            <div class="emoji">👟</div>
+
+            <h3>Shoes</h3>
+
+            <p>₹2,999</p>
+
+             <button class="red-btn">View Details</button>
+
+        </div>
+    </div>
+
+</section>
 
 </body>
 
