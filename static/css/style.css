@@ -234,3 +234,100 @@ p{
 .red-btn{
     background: red !important;
 }
+
+/* Search Box */
+
+.search-box input{
+
+    padding: 10px;px 15px;
+
+    border:none;
+
+    border-radius:20px;
+
+    outline:none;
+
+    width:200px;
+
+    font-size:16px;
+
+}
+.login-btn{
+
+    background:#1a73e8;
+
+    color:white;
+
+    text-decoration:none;
+
+    padding:10px 20px;
+
+    border-radius:8px;
+
+    transition:0.3s;
+
+}
+
+.login-btn:hover{
+
+    background:#0b5ed7;
+
+}
+
+.card img{
+    width:180px;
+    height:180px;
+    object-fit:cover;
+    border-radius:10px;
+    transition:0.3s;
+}
+
+.card img:hover{
+    transform:scale(1.05);
+}
+
+.rating{
+    color: orange;
+    font-size: 18px;
+    margin: 8px 0;
+}
+
+.price{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.old-price{
+    text-decoration:line-through;
+    color:gray;
+    font-size:16px;
+    margin-left:10px;
+}
+
+.discount{
+    display:inline-block;
+    background:rgb(231, 218, 216);
+    color:white;
+    padding:6px 12px;
+    border-radius:20px;
+    font-size:14px;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+.cart-btn{
+    background:#ff9900;
+    color:white;
+    border:none;
+    padding:12px;
+    width:100%;
+    border-radius:8px;
+    font-size:16px;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+.cart-btn:hover{
+    background:#e68a00;
+    transform:scale(1.03);
+}

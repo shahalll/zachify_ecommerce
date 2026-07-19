@@ -12,19 +12,28 @@
 <body>
 
     <nav>
-        <div class="logo">
-            <h2>Zachify store</h2>
-        </div>
 
-        <ul class="nav-links">
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Products</a></li>
-            <li><a href="#">Categories</a></li>
-            <li><a href="#">Contact</a></li>
-            <li><a href="#">Login</a></li>
-            <li><a href="#">about</a></li>
-        </ul>
-    </nav>
+    <div class="logo">
+        <h2>Zachify Store</h2>
+    </div>
+
+    <ul class="nav-links">
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Products</a></li>
+        <li><a href="#">Categories</a></li>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Contact</a></li>
+    </ul>
+
+    <div class="search-box">
+        <input type="text" placeholder="Search laptops...">
+    </div>
+
+    <a href="#" class="login-btn">Login</a>
+
+</nav>
+
+   
 
    <section class="hero">
 
@@ -46,61 +55,91 @@
 
         <div class="card">
 
-            <div class="emoji">💻</div>
+            <img src="{{ url_for('static', filename='images/laptop.jpg') }}" alt="Laptop">
 
-            <h3>Laptop</h3>
 
-            <p>₹55,000</p>
+            <h3>Dell Inspiron 15</h3>
+            <p class="rating">⭐⭐⭐⭐⭐ (4.8)</p>
 
-            <button>Buy Now</button>
+            <p class="price">
+    ₹55,000
+    <span class="old-price">₹70,000</span>
+</p>
 
-        </div>
+<p class="discount">20% OFF</p>
 
-        <div class="card">
-
-            <div class="emoji">⌚</div>
-
-            <h3>Smart Watch</h3>
-
-            <p>₹4,999</p>
-
-            <button>Buy Now</button>
+            <button class="cart-btn">🛒 Add to Cart</button>
 
         </div>
 
         <div class="card">
 
-            <div class="emoji">🎧</div>
+            <img src="{{ url_for('static', filename='images/smartwatch.jpg') }}" alt="Smart Watch">
 
-            <h3>Headphones</h3>
+            <h3>Noise ColorFit Pro</h3>
+            <p class="rating">⭐⭐⭐⭐⭐ (4.5)</p>
+             <p class="price">
+    ₹4,999
+    <span class="old-price">₹5,499</span>
+</p>
 
-            <p>₹2,499</p>
+<p class="discount">10% OFF</p>
 
-            <button>Buy Now</button>
-
-        </div>
-
-        <div class="card">
-
-            <div class="emoji">📱</div>
-
-            <h3>Smartphone</h3>
-
-            <p>₹18,999</p>
-
-             <button class="green-btn">View Details</button>
+            <button class="cart-btn">🛒 Add to Cart</button>
 
         </div>
 
         <div class="card">
 
-            <div class="emoji">👟</div>
+           <img src="{{ url_for('static', filename='images/headphone.jpg') }}" alt="Headphones">
 
-            <h3>Shoes</h3>
+            <h3>Sony WH-CH520</h3>
+            <p class="rating">⭐⭐⭐⭐ (4.2)</p>
 
-            <p>₹2,999</p>
+            <p class="price">
+    ₹2,499
+    <span class="old-price">₹2,999</span>
+</p>
 
-             <button class="red-btn">View Details</button>
+<p class="discount">15% OFF</p>
+
+            <button class="cart-btn">🛒 Add to Cart</button>
+
+        </div>
+
+        <div class="card">
+
+            <img src="{{ url_for('static', filename='images/iphone.jpg') }}" alt="Iphone">
+
+            <h3>Iphone 15pro</h3>
+            <p class="rating">⭐⭐⭐⭐⭐ (4.8)</p>
+
+            <p class="price">
+    ₹18,999
+    <span class="old-price">₹20,999</span>
+</p>
+
+<p class="discount">10% OFF</p>
+
+            <button class="cart-btn">🛒 Add to Cart</button>
+
+        </div>
+
+        <div class="card">
+
+            <img src="{{ url_for('static', filename='images/shoe.jpg') }}" alt="Shoes">
+
+            <h3>Converse</h3>
+            <p class="rating">⭐⭐⭐⭐ (4.0)</p>
+
+            <p class="price">
+    ₹2,999
+    <span class="old-price">₹3,499</span>
+</p>
+
+<p class="discount">15% OFF</p>
+
+            <button class="cart-btn">🛒 Add to Cart</button>
 
         </div>
     </div>
