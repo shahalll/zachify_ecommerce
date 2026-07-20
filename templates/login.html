@@ -1,15 +1,43 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login - Zachify</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-<h1>Login</h1>
+{% block title %}
+Login - Zachify
+{% endblock %}
 
-<p>Welcome to the Login Page.</p>
+{% block content %}
 
-<a href="/">← Back to Home</a>
+<div class="login-page">
 
-</body>
-</html>
+    <h1>Welcome Back 👋</h1>
+
+    <p>Sign in to continue shopping on Zachify</p>
+
+    <form method="POST" action="/login">
+
+        <label>Email Address</label>
+
+        <input
+            type="email"
+            name="email"
+            placeholder="Enter your email"
+            required
+        >
+
+        <label>Password</label>
+
+        <input
+            type="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+        >
+
+        <button type="submit">
+            Login
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

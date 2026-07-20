@@ -1,13 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Products - Zachify</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-    <h1>Products Page</h1>
+{% block title %}
+Products - Zachify
+{% endblock %}
 
-    <p>Welcome to the Zachify Products Page.</p>
-<a href="/">← Back to Home</a>
-</body>
-</html>
+{% block content %}
+
+<section class="products-page">
+
+    <h1>Our Products</h1>
+
+    <p>Browse all products available in Zachify.</p>
+
+</section>
+
+{% endblock %}

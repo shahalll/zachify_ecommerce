@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Zachify{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <!-- Navbar -->
+   <nav>
+    <div class="logo">
+        <h2>Zachify</h2>
+    </div>
+
+    <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/contact">Contact</a></li>
+        <li><a href="/register">Register</a></li>
+    </ul>
+
+    {% if request.path != '/login' and request.path != '/register' %}
+<a href="/login" class="login-btn">Login</a>
+{% endif %}
+</nav>
+
+    <!-- Page Content -->
+    {% block content %}
+    {% endblock %}
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 Zachify. All Rights Reserved.</p>
+    </footer>
+
+</body>
+</html>

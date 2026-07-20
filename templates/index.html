@@ -1,40 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>zachify.in</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body>
-
-    <nav>
-
-    <div class="logo">
-        <h2>Zachify</h2>
-    </div>
-
-    <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/products">Products</a></li>
-        <li><a href="#">Categories</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/contact">Contact</a></li>
-    </ul>
-
-    <div class="search-box">
-        <input type="text" placeholder="Search laptops...">
-    </div>
-
-    <a href="#" class="login-btn">Login</a>
-
-</nav>
+{% extends "base.html" %}
+{% block title %}
+Home - Zachify
+{% endblock %}
+{% block content %}
 
    
-
    <section class="hero">
 
     <h1>Welcome to Zachify Store</h1>
@@ -179,28 +149,4 @@
 
 </section>
 
-<footer>
-
-    <h3>Zachify</h3>
-
-    <p>Your One-Stop Shopping Destination</p>
-
-    <div class="footer-links">
-
-        <a href="#">Home</a>
-
-        <a href="#">Products</a>
-
-        <a href="#">About</a>
-
-        <a href="#">Contact</a>
-
-    </div>
-
-    <p>© 2026 Zachify. All Rights Reserved.</p>
-
-</footer>
-
-</body>
-
-</html>
+{% endblock %}

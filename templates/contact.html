@@ -1,15 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Contact - Zachify</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-<h1>Contact Us</h1>
+{% block title %}
+Contact - Zachify
+{% endblock %}
 
-<p>Welcome to the Contact Page.</p>
+{% block content %}
 
-<a href="/">← Back to Home</a>
+<section class="contact-page">
 
-</body>
-</html>
+    <h1>Contact Us</h1>
+
+    <p>Email: support@zachify.com</p>
+
+</section>
+
+{% endblock %}

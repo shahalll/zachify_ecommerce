@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}
+Register - Zachify
+{% endblock %}
+
+{% block content %}
+
+<div class="login-page">
+
+    <h1>Create Account</h1>
+
+    <p>Join Zachify and start shopping today!</p>
+
+    <form method="POST" action="/register">
+
+        <label>Username</label>
+        <input
+            type="text"
+            name="username"
+            placeholder="Enter your username"
+            required
+        >
+
+        <label>Email Address</label>
+        <input
+            type="email"
+            name="email"
+            placeholder="Enter your email"
+            required
+        >
+
+        <label>Password</label>
+        <input
+            type="password"
+            name="password"
+            placeholder="Create a password"
+            required
+        >
+
+        <label>Confirm Password</label>
+        <input
+            type="password"
+            name="confirm_password"
+            placeholder="Confirm your password"
+            required
+        >
+
+        <button type="submit">Register</button>
+
+    </form>
+
+    <p style="margin-top:20px;">
+        Already have an account?
+        <a href="/login">Login</a>
+    </p>
+
+</div>
+
+{% endblock %}

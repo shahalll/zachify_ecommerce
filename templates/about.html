@@ -1,15 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>About - Zachify</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-<h1>About Zachify</h1>
+{% block title %}
+About - Zachify
+{% endblock %}
 
-<p>Welcome to the About Page.</p>
+{% block content %}
 
-<a href="/">← Back to Home</a>
+<section class="about-page">
 
-</body>
-</html>
+    <h1>About Zachify</h1>
+
+    <p>Zachify is an online shopping platform built using Flask.</p>
+
+</section>
+
+{% endblock %}
