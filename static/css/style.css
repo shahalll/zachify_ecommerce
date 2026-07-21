@@ -463,3 +463,8 @@ footer{
 .footer-links a:hover{
     color:#ff9900;
 }
+.welcome-user{
+    color:white;
+    font-size:17px;
+    font-weight:bold;
+}
