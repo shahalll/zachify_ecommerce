@@ -7,11 +7,21 @@ Home - Zachify
    
    <section class="hero">
 
-    <h1>Welcome to Zachify Store</h1>
+    <div class="hero-content">
 
-    <p>Discover the Best Deals on Electronics, Fashion & More.</p>
+        <h1>Upgrade Your Lifestyle</h1>
 
-    <button class="shop-btn">Shop Now</button>
+        <p>
+            Discover premium electronics, fashion, and accessories
+            with unbeatable deals only on <strong>Zachify</strong>.
+        </p>
+
+        <div class="hero-buttons">
+            <a href="/products" class="shop-btn">Shop Now</a>
+            <a href="/about" class="explore-btn">Explore</a>
+        </div>
+
+    </div>
 
 </section>
 
@@ -52,101 +62,48 @@ Home - Zachify
 
 <section class="products">
 
-    <h2>Featured Products</h2>
+    <div class="section-title">
+
+    <span>FEATURED COLLECTION</span>
+
+    <h2>Trending Products</h2>
+
+    <p>Carefully selected products with the best prices and quality.</p>
+
+</div>
 
     <div class="product-container">
 
-        <div class="card">
+        {% for product in products %}
 
-            <img src="{{ url_for('static', filename='images/laptop.jpg') }}" alt="Laptop">
+<div class="card">
 
-
-            <h3>Dell Inspiron 15</h3>
-            <p class="rating">⭐⭐⭐⭐⭐ (4.8)</p>
-
-            <p class="price">
-    ₹55,000
-    <span class="old-price">₹70,000</span>
-</p>
-
-<p class="discount">20% OFF</p>
-
-            <button class="cart-btn">🛒 Add to Cart</button>
-
-        </div>
-
-        <div class="card">
-
-            <img src="{{ url_for('static', filename='images/smartwatch.jpg') }}" alt="Smart Watch">
-
-            <h3>Noise ColorFit Pro</h3>
-            <p class="rating">⭐⭐⭐⭐⭐ (4.5)</p>
-             <p class="price">
-    ₹4,999
-    <span class="old-price">₹5,499</span>
-</p>
-
-<p class="discount">10% OFF</p>
-
-            <button class="cart-btn">🛒 Add to Cart</button>
-
-        </div>
-
-        <div class="card">
-
-           <img src="{{ url_for('static', filename='images/headphone.jpg') }}" alt="Headphones">
-
-            <h3>Sony WH-CH520</h3>
-            <p class="rating">⭐⭐⭐⭐ (4.2)</p>
-
-            <p class="price">
-    ₹2,499
-    <span class="old-price">₹2,999</span>
-</p>
-
-<p class="discount">15% OFF</p>
-
-            <button class="cart-btn">🛒 Add to Cart</button>
-
-        </div>
-
-        <div class="card">
-
-            <img src="{{ url_for('static', filename='images/iphone.jpg') }}" alt="Iphone">
-
-            <h3>Iphone 15pro</h3>
-            <p class="rating">⭐⭐⭐⭐⭐ (4.8)</p>
-
-            <p class="price">
-    ₹18,999
-    <span class="old-price">₹20,999</span>
-</p>
-
-<p class="discount">10% OFF</p>
-
-            <button class="cart-btn">🛒 Add to Cart</button>
-
-        </div>
-
-        <div class="card">
-
-            <img src="{{ url_for('static', filename='images/shoe.jpg') }}" alt="Shoes">
-
-            <h3>Converse</h3>
-            <p class="rating">⭐⭐⭐⭐ (4.0)</p>
-
-            <p class="price">
-    ₹2,999
-    <span class="old-price">₹3,499</span>
-</p>
-
-<p class="discount">15% OFF</p>
-
-            <button class="cart-btn">🛒 Add to Cart</button>
-
-        </div>
+    <div class="product-image">
+        <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
     </div>
 
+    <div class="product-info">
+
+        <h3>{{ product.name }}</h3>
+
+        <p class="rating">⭐⭐⭐⭐⭐ <span>(4.8)</span></p>
+
+        <p class="price">
+            ₹{{ product.price }}
+        </p>
+
+        <p class="category">{{ product.category }}</p>
+
+        <button class="cart-btn">
+            🛒 Add to Cart
+        </button>
+
+    </div>
+
+</div>
+
+{% endfor %}
+</div>
 </section>
 
 {% endblock %}

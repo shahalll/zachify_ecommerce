@@ -4,27 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Zachify{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
     <!-- Navbar -->
-   <nav>
+   <nav class="navbar">
+
+    <!-- Logo -->
     <div class="logo">
-        <h2>Zachify</h2>
+        <a href="/">ZACHIFY</a>
     </div>
 
+    <!-- Navigation -->
     <ul class="nav-links">
         <li><a href="/">Home</a></li>
         <li><a href="/products">Products</a></li>
         <li><a href="/about">About</a></li>
         <li><a href="/contact">Contact</a></li>
-        <li><a href="/register">Register</a></li>
+        <li><a href="/admin">Admin</a></li>
     </ul>
 
-    {% if request.path != '/login' and request.path != '/register' %}
+    <!-- Search -->
+    <div class="search-box">
+        <input type="text" placeholder="Search products...">
+    </div>
+
+    <!-- User Buttons -->
+    <div class="nav-right">
+
+        {% if session.get("username") %}
+
+            <span class="welcome-user">
+                Hi, {{ session["username"] }}
+            </span>
+
+            <a href="/logout" class="login-btn">Logout</a>
+
+        {% else %}
+
+            <a href="/register" class="register-btn">Register</a>
+
+            <a href="/login" class="login-btn">Login</a>
+
+        {% endif %}
+
+    </div>
+
+</nav>
+
+ 
 {% if session.get("username") %}
 
     <span class="welcome-user">
@@ -35,10 +69,10 @@
 
 {% else %}
 
-    <a href="/login" class="login-btn">Login</a>
+
 
 {% endif %}
-{% endif %}
+
 </nav>
 
     <!-- Page Content -->

@@ -19,9 +19,28 @@ class User(db.Model):
 
     password = db.Column(db.String(200), nullable=False)
 
+class Product(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(db.String(200), nullable=False)
+
+    price = db.Column(db.Float, nullable=False)
+
+    image = db.Column(db.String(200), nullable=False)
+
+    category = db.Column(db.String(100), nullable=False)
+
+    description = db.Column(db.Text, nullable=False)
+
+    stock = db.Column(db.Integer, default=0)
+
 @app.route("/")
 def home():
-    return render_template("index.html")
+
+    products = Product.query.all()
+
+    return render_template("index.html", products=products)
 @app.route("/products")
 def products():
     return render_template("products.html")
@@ -87,6 +106,63 @@ def logout():
     session.pop("username", None)
 
     return redirect(url_for("home"))
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+
+    if request.method == "POST":
+
+        name = request.form["name"]
+        price = float(request.form["price"])
+        image = request.form["image"]
+        category = request.form["category"]
+        description = request.form["description"]
+        stock = int(request.form["stock"])
+
+        new_product = Product(
+            name=name,
+            price=price,
+            image=image,
+            category=category,
+            description=description,
+            stock=stock
+        )
+
+        db.session.add(new_product)
+        db.session.commit()
+
+    products = Product.query.all()
+
+    return render_template("admin.html", products=products)
+
+@app.route("/delete_product/<int:id>")
+def delete_product(id):
+
+    product = Product.query.get_or_404(id)
+
+    db.session.delete(product)
+
+    db.session.commit()
+
+    return redirect("/admin")
+@app.route("/edit_product/<int:id>", methods=["GET", "POST"])
+def edit_product(id):
+
+    product = Product.query.get_or_404(id)
+
+    if request.method == "POST":
+
+        product.name = request.form["name"]
+        product.price = float(request.form["price"])
+        product.image = request.form["image"]
+        product.category = request.form["category"]
+        product.description = request.form["description"]
+        product.stock = int(request.form["stock"])
+
+        db.session.commit()
+
+        return redirect("/admin")
+
+    return render_template("edit_product.html", product=product)
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
