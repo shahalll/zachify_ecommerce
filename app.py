@@ -1,8 +1,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 
-from flask import Flask, render_template, request, redirect, url_for, session
-
+from flask import Flask, render_template, request, redirect, session
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "zachify_secret_key"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///zachify.db"
@@ -134,6 +133,63 @@ def admin():
 
     return render_template("admin.html", products=products)
 
+@app.route("/cart")
+def cart():
+
+    cart = session.get("cart", {})
+
+    product_ids = [int(pid) for pid in cart.keys()]
+
+    products = Product.query.filter(Product.id.in_(product_ids)).all()
+
+    return render_template("cart.html", products=products, cart=cart)
+
+@app.route("/add_to_cart/<int:product_id>", methods=["POST"])
+def add_to_cart(product_id):
+
+    cart = session.get("cart", {})
+
+    product_id = str(product_id)
+
+    if product_id in cart:
+        cart[product_id] += 1
+    else:
+        cart[product_id] = 1
+
+    session["cart"] = cart
+
+    return redirect("/cart")
+@app.route("/remove_from_cart/<int:product_id>", methods=["POST"])
+def remove_from_cart(product_id):
+
+    cart = session.get("cart", {})
+
+    product_id = str(product_id)
+
+    if product_id in cart:
+        del cart[product_id]
+
+    session["cart"] = cart
+
+    return redirect("/cart")
+
+@app.route("/increase_quantity/<int:product_id>", methods=["POST"])
+def increase_quantity(product_id):
+
+    cart = session.get("cart", {})
+
+    print("Before:", cart)
+
+    product_id = str(product_id)
+
+    if product_id in cart:
+        cart[product_id] += 1
+
+    session["cart"] = cart
+
+    print("After:", cart)
+
+    return redirect("/cart")
 @app.route("/delete_product/<int:id>")
 def delete_product(id):
 
@@ -163,6 +219,10 @@ def edit_product(id):
         return redirect("/admin")
 
     return render_template("edit_product.html", product=product)
+@app.route("/clear_cart")
+def clear_cart():
+    session.clear()
+    return "Session Cleared!"
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()

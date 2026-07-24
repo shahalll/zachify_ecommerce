@@ -94,9 +94,13 @@ Home - Zachify
 
         <p class="category">{{ product.category }}</p>
 
-        <button class="cart-btn">
-            🛒 Add to Cart
-        </button>
+        <form action="/add_to_cart/{{ product.id }}" method="POST">
+
+    <button type="submit" class="cart-btn">
+        🛒 Add to Cart
+    </button>
+
+</form>
 
     </div>
 

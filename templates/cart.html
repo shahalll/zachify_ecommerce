@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}
+Shopping Cart
+{% endblock %}
+
+{% block content %}
+
+<div class="cart-container">
+
+    <h1>🛒 Your Shopping Cart</h1>
+
+   {% if products %}
+
+<div class="product-container">
+
+    {% for product in products %}
+
+    <div class="card">
+
+        <h3>{{ product.name }}</h3>
+
+        <p class="price">₹{{ product.price }}</p>
+
+        <p>{{ product.category }}</p>
+
+        <p>
+            Quantity:
+            {{ cart[product.id|string] }}
+        </p>
+
+        <form action="/increase_quantity/{{ product.id }}" method="POST">
+            <button type="submit" class="cart-btn">
+                ➕
+            </button>
+        </form>
+
+        <form action="/remove_from_cart/{{ product.id }}" method="POST">
+            <button type="submit" class="cart-btn">
+                🗑 Remove
+            </button>
+        </form>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+
+{% else %}
+
+<p>Your cart is empty.</p>
+
+{% endif %}
+</div>
+
+{% endblock %}
