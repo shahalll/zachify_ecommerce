@@ -25,7 +25,6 @@
     <ul class="nav-links">
         <li><a href="/">Home</a></li>
         <li><a href="/products">Products</a></li>
-        <li><a href="/cart">Cart</a></li>
         <li><a href="/about">About</a></li>
         <li><a href="/contact">Contact</a></li>
         <li><a href="/admin">Admin</a></li>
@@ -48,7 +47,21 @@
             <a href="/logout" class="login-btn">Logout</a>
 
         {% else %}
+ <li>
+    <a href="/cart" class="cart-link">
 
+        🛒 Cart
+
+        {% if cart_count > 0 %}
+
+        <span class="cart-badge">
+            {{ cart_count }}
+        </span>
+
+        {% endif %}
+
+    </a>
+</li>
             <a href="/register" class="register-btn">Register</a>
 
             <a href="/login" class="login-btn">Login</a>

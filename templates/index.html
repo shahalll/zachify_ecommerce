@@ -5,21 +5,59 @@ Home - Zachify
 {% block content %}
 
    
-   <section class="hero">
+  <section class="hero">
 
-    <div class="hero-content">
+    <div class="hero-left">
 
-        <h1>Upgrade Your Lifestyle</h1>
+        <span class="hero-tag">
+            ✨ Premium Electronics
+        </span>
+
+        <h1>
+
+            Upgrade Your
+
+            <span>Digital Lifestyle</span>
+
+        </h1>
 
         <p>
-            Discover premium electronics, fashion, and accessories
-            with unbeatable deals only on <strong>Zachify</strong>.
+
+            Discover premium gadgets designed for modern life.
+            Shop laptops, headphones and smartwatches
+            with exclusive deals only at Zachify.
+
         </p>
 
         <div class="hero-buttons">
-            <a href="/products" class="shop-btn">Shop Now</a>
-            <a href="/about" class="explore-btn">Explore</a>
+
+            <a href="/products" class="shop-btn">
+
+                Shop Now
+
+            </a>
+
+            <a href="/about" class="explore-btn">
+
+                Explore
+
+            </a>
+
         </div>
+
+    </div>
+
+
+    <div class="hero-right">
+
+        <img class="hero-laptop"
+        src="{{ url_for('static', filename='images/laptop.png') }}">
+
+        <img class="hero-headphone"
+        src="{{ url_for('static', filename='images/headphone.png') }}">
+
+        <img class="hero-watch"
+        src="{{ url_for('static', filename='images/watch.png') }}">
 
     </div>
 

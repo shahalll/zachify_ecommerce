@@ -9,6 +9,14 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
+@app.context_processor
+def cart_count():
+
+    cart = session.get("cart", {})
+
+    total_quantity = sum(cart.values())
+
+    return {"cart_count": total_quantity}
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -142,7 +150,18 @@ def cart():
 
     products = Product.query.filter(Product.id.in_(product_ids)).all()
 
-    return render_template("cart.html", products=products, cart=cart)
+    total = 0
+
+    for product in products:
+
+        total += product.price * cart[str(product.id)]
+
+    return render_template(
+        "cart.html",
+        products=products,
+        cart=cart,
+        total=total
+    )
 
 @app.route("/add_to_cart/<int:product_id>", methods=["POST"])
 def add_to_cart(product_id):
@@ -188,6 +207,24 @@ def increase_quantity(product_id):
     session["cart"] = cart
 
     print("After:", cart)
+
+    return redirect("/cart")
+
+@app.route("/decrease_quantity/<int:product_id>", methods=["POST"])
+def decrease_quantity(product_id):
+
+    cart = session.get("cart", {})
+
+    product_id = str(product_id)
+
+    if product_id in cart:
+
+        if cart[product_id] > 1:
+            cart[product_id] -= 1
+        else:
+            del cart[product_id]
+
+    session["cart"] = cart
 
     return redirect("/cart")
 @app.route("/delete_product/<int:id>")

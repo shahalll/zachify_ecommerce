@@ -28,7 +28,11 @@ Shopping Cart
             Quantity:
             {{ cart[product.id|string] }}
         </p>
-
+<form action="/decrease_quantity/{{ product.id }}" method="POST">
+    <button type="submit" class="cart-btn">
+        ➖
+    </button>
+</form>
         <form action="/increase_quantity/{{ product.id }}" method="POST">
             <button type="submit" class="cart-btn">
                 ➕
@@ -46,7 +50,9 @@ Shopping Cart
     {% endfor %}
 
 </div>
-
+<h2 style="margin-top:30px;">
+    Grand Total: ₹{{ total }}
+</h2>
 {% else %}
 
 <p>Your cart is empty.</p>
