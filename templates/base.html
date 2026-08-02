@@ -23,11 +23,11 @@
 
     <!-- Navigation -->
     <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/products">Products</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/contact">Contact</a></li>
-        <li><a href="/admin">Admin</a></li>
+        <li><a href="{{ url_for('home') }}">Home</a></li>
+        <li><a href="{{ url_for('products') }}">Products</a></li>
+        <li><a href="{{ url_for('about') }}">About</a></li>
+        <li><a href="{{ url_for('contact') }}">Contact</a></li>
+        <li><a href="{{ url_for('admin') }}">Admin</a></li>
     </ul>
 
     <!-- Search -->
@@ -37,64 +37,33 @@
 
     <!-- User Buttons -->
     <div class="nav-right">
+        <a href="{{ url_for('cart') }}" class="cart-link" style="position: relative; display: inline-flex; align-items: center; text-decoration: none;">
+            🛒 Cart
+            {% if cart_count > 0 %}
+            <span class="cart-badge">{{ cart_count }}</span>
+            {% endif %}
+        </a>
 
         {% if session.get("username") %}
-
             <span class="welcome-user">
                 Hi, {{ session["username"] }}
             </span>
-
-            <a href="/logout" class="login-btn">Logout</a>
-
+            <a href="{{ url_for('logout') }}" class="login-btn">Logout</a>
         {% else %}
- <li>
-    <a href="/cart" class="cart-link">
-
-        🛒 Cart
-
-        {% if cart_count > 0 %}
-
-        <span class="cart-badge">
-            {{ cart_count }}
-        </span>
-
+            <a href="{{ url_for('register') }}" class="register-btn">Register</a>
+            <a href="{{ url_for('login') }}" class="login-btn">Login</a>
         {% endif %}
-
-    </a>
-</li>
-            <a href="/register" class="register-btn">Register</a>
-
-            <a href="/login" class="login-btn">Login</a>
-
-        {% endif %}
-
     </div>
 
 </nav>
 
  
-{% if session.get("username") %}
-
-    <span class="welcome-user">
-        Welcome, {{ session["username"] }}
-    </span>
-
-    <a href="/logout" class="login-btn">Logout</a>
-
-{% else %}
-
-
-
-{% endif %}
-
-</nav>
-
     <!-- Page Content -->
     {% block content %}
     {% endblock %}
 
     <!-- Footer -->
-    <footer>
+    <footer class="footer">
         <p>&copy; 2026 Zachify. All Rights Reserved.</p>
     </footer>
 

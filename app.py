@@ -1,7 +1,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, url_for
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "zachify_secret_key"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///zachify.db"
@@ -50,7 +50,13 @@ def home():
     return render_template("index.html", products=products)
 @app.route("/products")
 def products():
-    return render_template("products.html")
+    products = Product.query.all()
+    return render_template("products.html", products=products)
+
+@app.route("/product/<int:id>")
+def product_detail(id):
+    product = Product.query.get_or_404(id)
+    return render_template("product_details.html", product=product)
 @app.route("/about")
 def about():
     return render_template("about.html")
@@ -163,7 +169,7 @@ def cart():
         total=total
     )
 
-@app.route("/add_to_cart/<int:product_id>", methods=["POST"])
+@app.route("/add_to_cart/<int:product_id>", methods=["GET", "POST"])
 def add_to_cart(product_id):
 
     cart = session.get("cart", {})
@@ -176,8 +182,9 @@ def add_to_cart(product_id):
         cart[product_id] = 1
 
     session["cart"] = cart
+    session.modified = True
 
-    return redirect("/cart")
+    return redirect(request.referrer or url_for("cart"))
 @app.route("/remove_from_cart/<int:product_id>", methods=["POST"])
 def remove_from_cart(product_id):
 

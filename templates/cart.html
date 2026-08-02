@@ -6,9 +6,9 @@ Shopping Cart
 
 {% block content %}
 
-<div class="cart-container">
+<div class="cart-container" style="padding: 120px 8% 80px;">
 
-    <h1>🛒 Your Shopping Cart</h1>
+    <h1 style="color: white; margin-bottom: 30px;">🛒 Your Shopping Cart</h1>
 
    {% if products %}
 
@@ -18,44 +18,49 @@ Shopping Cart
 
     <div class="card">
 
-        <h3>{{ product.name }}</h3>
+        <div class="product-info">
+            <h3 style="color: white;"><a href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;">{{ product.name }}</a></h3>
 
-        <p class="price">₹{{ product.price }}</p>
+            <p class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</p>
 
-        <p>{{ product.category }}</p>
+            <p class="category">{{ product.category }}</p>
 
-        <p>
-            Quantity:
-            {{ cart[product.id|string] }}
-        </p>
-<form action="/decrease_quantity/{{ product.id }}" method="POST">
-    <button type="submit" class="cart-btn">
-        ➖
-    </button>
-</form>
-        <form action="/increase_quantity/{{ product.id }}" method="POST">
-            <button type="submit" class="cart-btn">
-                ➕
-            </button>
-        </form>
+            <p style="color: #A1A1AA; font-size: 16px; margin: 15px 0;">
+                <strong>Quantity:</strong> {{ cart[product.id|string] }}
+            </p>
 
-        <form action="/remove_from_cart/{{ product.id }}" method="POST">
-            <button type="submit" class="cart-btn">
-                🗑 Remove
-            </button>
-        </form>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <form action="{{ url_for('decrease_quantity', product_id=product.id) }}" method="POST" style="flex: 1;">
+                    <button type="submit" class="cart-btn" style="margin-top: 0; padding: 10px;">
+                        ➖
+                    </button>
+                </form>
+
+                <form action="{{ url_for('increase_quantity', product_id=product.id) }}" method="POST" style="flex: 1;">
+                    <button type="submit" class="cart-btn" style="margin-top: 0; padding: 10px;">
+                        ➕
+                    </button>
+                </form>
+
+                <form action="{{ url_for('remove_from_cart', product_id=product.id) }}" method="POST" style="flex: 1.5;">
+                    <button type="submit" class="cart-btn" style="margin-top: 0; padding: 10px; background: #EF4444;">
+                        🗑 Remove
+                    </button>
+                </form>
+            </div>
+        </div>
 
     </div>
 
     {% endfor %}
 
 </div>
-<h2 style="margin-top:30px;">
-    Grand Total: ₹{{ total }}
+<h2 style="margin-top:40px; color: white; font-size: 32px;">
+    Grand Total: <span style="color: #8B5CF6;">₹{{ "%.2f"|format(total) if total is float else total }}</span>
 </h2>
 {% else %}
 
-<p>Your cart is empty.</p>
+<p style="color: #A1A1AA; font-size: 20px; text-align: left; margin-top: 20px;">Your cart is empty. <a href="{{ url_for('products') }}" style="color: #8B5CF6; font-weight: 600;">Browse Products →</a></p>
 
 {% endif %}
 </div>

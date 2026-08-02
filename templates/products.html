@@ -5,12 +5,56 @@ Products - Zachify
 {% endblock %}
 
 {% block content %}
+<section class="products-banner">
 
-<section class="products-page">
+    <span>PREMIUM COLLECTION</span>
 
-    <h1>Our Products</h1>
+    <h1>Discover Your Next Device</h1>
 
-    <p>Browse all products available in Zachify.</p>
+    <p>
+        Explore laptops, smartphones, smartwatches and accessories
+        selected for performance and style.
+    </p>
+
+</section>
+<section class="products">
+
+    <div class="section-title">
+
+        <span>OUR COLLECTION</span>
+
+        <h2>All Products</h2>
+
+        <p>Browse our premium collection of electronics.</p>
+
+    </div>
+
+    <div class="product-container">
+        {% for product in products %}
+        <div class="card" onclick="location.href='{{ url_for('product_detail', id=product.id) }}';" style="cursor: pointer;">
+            <div class="product-image">
+                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+            </div>
+            <div class="product-info">
+                <h3><a href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();">{{ product.name }}</a></h3>
+                <p class="rating">
+                    ★★★★★ <span>(4.8)</span>
+                </p>
+                <p class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</p>
+                <p class="category">{{ product.category }}</p>
+                <p style="color: #A1A1AA; font-size: 14px; margin: 10px 0; line-height: 1.5; text-align: left;">
+                    {{ product.description[:90] ~ '...' if product.description|length > 90 else product.description }}
+                </p>
+                <p style="color: #A78BFA; font-size: 13px; font-weight: 600; margin-bottom: 15px; text-align: left;">
+                    Stock: {{ product.stock }} units available
+                </p>
+                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" onclick="event.stopPropagation();">
+                    <button class="cart-btn" type="submit">🛒 Add to Cart</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 
 </section>
 

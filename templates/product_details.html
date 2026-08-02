@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ product.name }} - Zachify
+{% endblock %}
+
+{% block content %}
+<section class="product-details">
+
+    <div class="details-image">
+        <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+    </div>
+
+    <div class="details-info">
+        <span class="product-category">{{ product.category }}</span>
+
+        <h1>{{ product.name }}</h1>
+
+        <div class="details-rating">
+            ★★★★★ <span>(4.8 rating)</span>
+        </div>
+
+        <div class="details-price">
+            ₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}
+        </div>
+
+        <p class="details-description">
+            {{ product.description }}
+        </p>
+
+        <p style="color: #A1A1AA; font-size: 16px; margin-bottom: 30px;">
+            <strong>Available Stock:</strong> <span style="color: #A78BFA; font-weight: 600;">{{ product.stock }} units</span>
+        </p>
+
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" style="margin: 0;">
+                <button type="submit" class="buy-btn">
+                    🛒 Add to Cart
+                </button>
+            </form>
+
+            <a href="{{ url_for('products') }}" class="explore-btn" style="text-decoration: none; padding: 18px 30px; display: inline-block;">
+                ← Back to Products
+            </a>
+        </div>
+    </div>
+
+</section>
+{% endblock %}
