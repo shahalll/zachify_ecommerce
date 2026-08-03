@@ -31,12 +31,32 @@
     </ul>
 
     <!-- Search -->
-    <div class="search-box">
-        <input type="text" placeholder="Search products...">
+    <div class="search-shell">
+        <form class="search-box" id="searchBoxForm" action="{{ url_for('search') }}" method="get">
+            <div class="search-input-wrap">
+                <input id="searchInput" type="text" name="q" placeholder="Search products..." value="{{ request.args.get('q', '') }}" autocomplete="off">
+                <button type="button" class="search-clear-btn" id="searchClearBtn" aria-label="Clear search">×</button>
+            </div>
+            <button type="submit" aria-label="Search products">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </button>
+        </form>
+        <div class="search-suggestions" id="searchSuggestions" aria-live="polite"></div>
+        <div class="recent-searches" id="recentSearches"></div>
     </div>
 
     <!-- User Buttons -->
     <div class="nav-right">
+        <a href="{{ url_for('wishlist_page') }}" class="cart-link wishlist-link" style="position: relative; display: inline-flex; align-items: center; text-decoration: none;">
+            ♡ Wishlist
+            {% if wishlist_count > 0 %}
+            <span class="cart-badge">{{ wishlist_count }}</span>
+            {% endif %}
+        </a>
+
         <a href="{{ url_for('cart') }}" class="cart-link" style="position: relative; display: inline-flex; align-items: center; text-decoration: none;">
             🛒 Cart
             {% if cart_count > 0 %}
@@ -66,6 +86,179 @@
     <footer class="footer">
         <p>&copy; 2026 Zachify. All Rights Reserved.</p>
     </footer>
+
+    <script>
+        const searchForm = document.getElementById('searchBoxForm');
+        const searchInput = document.getElementById('searchInput');
+        const searchClearBtn = document.getElementById('searchClearBtn');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        const recentSearches = document.getElementById('recentSearches');
+        const recentKey = 'zachify_recent_searches';
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeRegExp(value) {
+            return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function highlightText(text, query) {
+            if (!query) return escapeHtml(text);
+            const escaped = escapeHtml(text);
+            const pattern = new RegExp(`(${escapeRegExp(query)})`, 'ig');
+            return escaped.replace(pattern, '<span class="highlight">$1</span>');
+        }
+
+        function saveRecentSearch(term) {
+            const value = term.trim();
+            if (!value) return;
+            const current = JSON.parse(localStorage.getItem(recentKey) || '[]');
+            const next = [value, ...current.filter(item => item.toLowerCase() !== value.toLowerCase())].slice(0, 6);
+            localStorage.setItem(recentKey, JSON.stringify(next));
+            renderRecentSearches();
+        }
+
+        function renderRecentSearches() {
+            if (!recentSearches) return;
+            const items = JSON.parse(localStorage.getItem(recentKey) || '[]');
+            if (!items.length) {
+                recentSearches.innerHTML = '';
+                recentSearches.classList.remove('active');
+                return;
+            }
+
+            recentSearches.innerHTML = `
+                <div class="suggestion-header">Recent searches</div>
+                ${items.map(item => `<button type="button" class="suggestion-item recent-item" data-query="${escapeHtml(item)}">${escapeHtml(item)}</button>`).join('')}
+            `;
+            recentSearches.classList.add('active');
+        }
+
+        function showSuggestions(items, query) {
+            if (!searchSuggestions) return;
+            if (!query || !items.length) {
+                searchSuggestions.innerHTML = '';
+                searchSuggestions.classList.remove('active');
+                return;
+            }
+
+            searchSuggestions.innerHTML = `
+                <div class="suggestion-header">Top matches</div>
+                ${items.map(item => `
+                    <button type="button" class="suggestion-item" data-query="${escapeHtml(item.name)}">
+                        <span class="suggestion-title">${highlightText(item.name, query)}</span>
+                        <span class="suggestion-meta">${escapeHtml(item.category || 'Product')}</span>
+                    </button>
+                `).join('')}
+            `;
+            searchSuggestions.classList.add('active');
+        }
+
+        let suggestionTimer;
+
+        function fetchSuggestions(query) {
+            if (!query || query.length < 2) {
+                searchSuggestions.innerHTML = '';
+                searchSuggestions.classList.remove('active');
+                return;
+            }
+
+            clearTimeout(suggestionTimer);
+            suggestionTimer = setTimeout(() => {
+                fetch(`/search/suggestions?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(items => showSuggestions(items, query));
+            }, 160);
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                const value = searchInput.value.trim();
+                const clearVisible = value.length > 0;
+                if (searchClearBtn) {
+                    searchClearBtn.style.opacity = clearVisible ? '1' : '0';
+                    searchClearBtn.style.pointerEvents = clearVisible ? 'auto' : 'none';
+                }
+                if (value) {
+                    fetchSuggestions(value);
+                } else {
+                    searchSuggestions.innerHTML = '';
+                    searchSuggestions.classList.remove('active');
+                    renderRecentSearches();
+                }
+            });
+
+            searchInput.addEventListener('focus', () => {
+                if (!searchInput.value.trim()) {
+                    renderRecentSearches();
+                }
+            });
+        }
+
+        if (searchClearBtn) {
+            searchClearBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                searchClearBtn.style.opacity = '0';
+                searchClearBtn.style.pointerEvents = 'none';
+                searchSuggestions.innerHTML = '';
+                searchSuggestions.classList.remove('active');
+                renderRecentSearches();
+                searchInput.focus();
+            });
+        }
+
+        if (searchForm) {
+            searchForm.addEventListener('submit', (event) => {
+                const value = searchInput.value.trim();
+                if (!value) {
+                    event.preventDefault();
+                    window.location.href = '{{ url_for("products") }}';
+                    return;
+                }
+                saveRecentSearch(value);
+            });
+        }
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.search-shell')) {
+                searchSuggestions.classList.remove('active');
+                recentSearches.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            const suggestion = event.target.closest('.suggestion-item');
+            if (!suggestion) return;
+            const query = suggestion.getAttribute('data-query');
+            if (query) {
+                searchInput.value = query;
+                saveRecentSearch(query);
+                window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            }
+        });
+
+        document.querySelectorAll('.wishlist-heart').forEach((heart) => {
+            heart.addEventListener('click', (event) => {
+                const href = heart.getAttribute('href');
+                if (!href) return;
+                event.preventDefault();
+                heart.classList.remove('heart-animate');
+                void heart.offsetWidth;
+                heart.classList.add('heart-animate');
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 220);
+            });
+        });
+
+        renderRecentSearches();
+    </script>
 
 </body>
 </html>

@@ -1,68 +1,119 @@
 {% extends "base.html" %}
 
 {% block title %}
-Shopping Cart
+Shopping Cart - Zachify
 {% endblock %}
 
 {% block content %}
-
-<div class="cart-container" style="padding: 120px 8% 80px;">
-
-    <h1 style="color: white; margin-bottom: 30px;">🛒 Your Shopping Cart</h1>
-
-   {% if products %}
-
-<div class="product-container">
-
-    {% for product in products %}
-
-    <div class="card">
-
-        <div class="product-info">
-            <h3 style="color: white;"><a href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;">{{ product.name }}</a></h3>
-
-            <p class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</p>
-
-            <p class="category">{{ product.category }}</p>
-
-            <p style="color: #A1A1AA; font-size: 16px; margin: 15px 0;">
-                <strong>Quantity:</strong> {{ cart[product.id|string] }}
-            </p>
-
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <form action="{{ url_for('decrease_quantity', product_id=product.id) }}" method="POST" style="flex: 1;">
-                    <button type="submit" class="cart-btn" style="margin-top: 0; padding: 10px;">
-                        ➖
-                    </button>
-                </form>
-
-                <form action="{{ url_for('increase_quantity', product_id=product.id) }}" method="POST" style="flex: 1;">
-                    <button type="submit" class="cart-btn" style="margin-top: 0; padding: 10px;">
-                        ➕
-                    </button>
-                </form>
-
-                <form action="{{ url_for('remove_from_cart', product_id=product.id) }}" method="POST" style="flex: 1.5;">
-                    <button type="submit" class="cart-btn" style="margin-top: 0; padding: 10px; background: #EF4444;">
-                        🗑 Remove
-                    </button>
-                </form>
-            </div>
+<section class="cart-page">
+    <div class="cart-page__header">
+        <div>
+            <p class="section-eyebrow">BAG & CHECKOUT</p>
+            <h1>Your shopping cart</h1>
+            <p>Everything you selected is waiting for its final glow-up.</p>
         </div>
-
+        <a href="{{ url_for('products') }}" class="ghost-btn">Continue Shopping</a>
     </div>
 
-    {% endfor %}
+    {% if products %}
+    <div class="cart-shell">
+        <div class="cart-items-column">
+            {% for product in products %}
+            {% set qty = cart[product.id|string] %}
+            {% set item_subtotal = product.price * qty %}
+            <article class="cart-item-card">
+                <div class="cart-item-media">
+                    <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+                    <span class="cart-item-badge">{{ product.category }}</span>
+                </div>
 
-</div>
-<h2 style="margin-top:40px; color: white; font-size: 32px;">
-    Grand Total: <span style="color: #8B5CF6;">₹{{ "%.2f"|format(total) if total is float else total }}</span>
-</h2>
-{% else %}
+                <div class="cart-item-content">
+                    <div class="cart-item-top">
+                        <div>
+                            <h3><a href="{{ url_for('product_detail', id=product.id) }}">{{ product.name }}</a></h3>
+                            <p class="cart-item-description">
+                                {{ product.description[:95] ~ '...' if product.description|length > 95 else product.description }}
+                            </p>
+                        </div>
+                        <div class="price-pill">₹{{ "%.2f"|format(product.price) }}</div>
+                    </div>
 
-<p style="color: #A1A1AA; font-size: 20px; text-align: left; margin-top: 20px;">Your cart is empty. <a href="{{ url_for('products') }}" style="color: #8B5CF6; font-weight: 600;">Browse Products →</a></p>
+                    <div class="cart-item-controls">
+                        <div class="quantity-controls">
+                            <form action="{{ url_for('decrease_quantity', product_id=product.id) }}" method="POST">
+                                <button type="submit" class="qty-btn" aria-label="Decrease quantity">−</button>
+                            </form>
+                            <span class="quantity-value">{{ qty }}</span>
+                            <form action="{{ url_for('increase_quantity', product_id=product.id) }}" method="POST">
+                                <button type="submit" class="qty-btn" aria-label="Increase quantity">+</button>
+                            </form>
+                        </div>
 
-{% endif %}
-</div>
+                        <form action="{{ url_for('remove_from_cart', product_id=product.id) }}" method="POST">
+                            <button type="submit" class="remove-btn">Remove</button>
+                        </form>
+                    </div>
 
+                    <div class="cart-item-footer">
+                        <span>Item subtotal</span>
+                        <strong>₹{{ "%.2f"|format(item_subtotal) }}</strong>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        <aside class="order-summary-card">
+            <div class="summary-head">
+                <p class="section-eyebrow">ORDER SUMMARY</p>
+                <h2>Ready to checkout</h2>
+            </div>
+
+            {% set subtotal = total %}
+            {% set shipping = 0 if subtotal >= 50000 else 299 %}
+            {% set discount = subtotal * 0.10 if subtotal >= 30000 else 0 %}
+            {% set tax = subtotal * 0.18 %}
+            {% set grand_total = subtotal + shipping + tax - discount %}
+
+            <div class="summary-list">
+                <div class="summary-row">
+                    <span>Total items</span>
+                    <strong>{{ cart_count }}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <strong>₹{{ "%.2f"|format(subtotal) }}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <strong>{% if shipping == 0 %}Free{% else %}₹{{ "%.2f"|format(shipping) }}{% endif %}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Discount</span>
+                    <strong>{% if discount > 0 %}-₹{{ "%.2f"|format(discount) }}{% else %}—{% endif %}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Tax</span>
+                    <strong>₹{{ "%.2f"|format(tax) }}</strong>
+                </div>
+            </div>
+
+            <div class="summary-total">
+                <span>Grand total</span>
+                <strong>₹{{ "%.2f"|format(grand_total) }}</strong>
+            </div>
+
+            <button type="button" class="checkout-btn">Proceed to Checkout</button>
+            <a href="{{ url_for('products') }}" class="secondary-link">Continue Shopping</a>
+        </aside>
+    </div>
+    {% else %}
+    <div class="empty-cart-state">
+        <div class="empty-cart-icon">🛍️</div>
+        <h2>Your cart is empty</h2>
+        <p>Looks like your selected pieces are still waiting to be discovered.</p>
+        <a href="{{ url_for('products') }}" class="checkout-btn">Browse Products</a>
+    </div>
+    {% endif %}
+</section>
 {% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}
+Search Results - Zachify
+{% endblock %}
+
+{% block content %}
+<section class="search-results-page">
+    <div class="section-title">
+        <span>SEARCH RESULTS</span>
+        <h2>Search Results for "{{ search_query }}"</h2>
+        <p>
+            {% if products %}
+                We found {{ products|length }} matching product{% if products|length != 1 %}s{% endif %} for your search.
+            {% else %}
+                Try another keyword or browse our categories to discover more premium picks.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="search-meta">
+        <div class="results-count" id="resultsCount">
+            {% if products %}
+            {{ products|length }} result{% if products|length != 1 %}s{% endif %}
+            {% else %}
+            0 results
+            {% endif %}
+        </div>
+        {% if categories %}
+        <div class="category-filter-chips">
+            <button type="button" class="filter-chip active" data-category="all">All</button>
+            {% for category in categories %}
+            <button type="button" class="filter-chip" data-category="{{ category }}">{{ category }}</button>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if products %}
+    <div class="product-container">
+        {% for product in products %}
+        <div class="card search-result-card" data-category="{{ product.category }}" onclick="location.href='{{ url_for('product_detail', id=product.id) }}';" style="cursor: pointer;">
+            <div class="card-topbar">
+                <div class="card-badges">
+                    <span class="category">{{ product.category }}</span>
+                </div>
+                <a href="{{ url_for('remove_from_wishlist', product_id=product.id) if product.id in wishlist_ids else url_for('add_to_wishlist', product_id=product.id) }}"
+                   class="wishlist-heart{% if product.id in wishlist_ids %} active{% endif %}"
+                   aria-label="Toggle wishlist"
+                   onclick="event.stopPropagation();">
+                    <span>{% if product.id in wishlist_ids %}♥{% else %}♡{% endif %}</span>
+                </a>
+            </div>
+
+            <div class="product-image">
+                <div class="image-glow"></div>
+                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+            </div>
+
+            <div class="product-info">
+                <h3><a class="search-product-title" href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();" data-highlight-text="{{ product.name }}">{{ product.name }}</a></h3>
+                <div class="rating">
+                    ★★★★★ <span>(4.8)</span>
+                </div>
+                <div class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</div>
+                <p class="product-short-desc search-product-description" data-highlight-text="{{ product.description }}">
+                    {{ product.description[:90] ~ '...' if product.description|length > 90 else product.description }}
+                </p>
+                <div class="stock-info">
+                    <span class="stock-dot"></span> Stock: {{ product.stock }} units available
+                </div>
+                <div class="card-actions">
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" onclick="event.stopPropagation();" style="flex: 1;">
+                        <button class="cart-btn" type="submit">🛒 Add to Cart</button>
+                    </form>
+                    <a href="{{ url_for('product_detail', id=product.id) }}" class="view-details-btn" onclick="event.stopPropagation();">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-search-state">
+        <div class="empty-search-icon">🔎</div>
+        <h3>No products found</h3>
+        <p>Try another keyword or browse our categories.</p>
+        <a href="{{ url_for('products') }}" class="shop-btn">Continue Shopping</a>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const query = '{{ search_query }}';
+        const titleElements = document.querySelectorAll('[data-highlight-text]');
+        const chips = document.querySelectorAll('.filter-chip');
+        const cards = document.querySelectorAll('.search-result-card');
+        const resultsCount = document.getElementById('resultsCount');
+
+        const escapeHtml = (value) => String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+
+        const highlightText = (text, searchQuery) => {
+            if (!searchQuery) return escapeHtml(text);
+            const escaped = escapeHtml(text);
+            const pattern = new RegExp(`(${escapeRegExp(searchQuery)})`, 'ig');
+            return escaped.replace(pattern, '<span class="highlight">$1</span>');
+        };
+
+        titleElements.forEach((element) => {
+            const text = element.getAttribute('data-highlight-text') || '';
+            element.innerHTML = highlightText(text, query);
+        });
+
+        const applyFilter = (category) => {
+            let visibleCount = 0;
+            cards.forEach((card) => {
+                const matches = category === 'all' || card.getAttribute('data-category') === category;
+                card.style.display = matches ? 'block' : 'none';
+                if (matches) visibleCount += 1;
+            });
+            if (resultsCount) {
+                resultsCount.textContent = `${visibleCount} result${visibleCount === 1 ? '' : 's'}`;
+            }
+        };
+
+        chips.forEach((chip) => {
+            chip.addEventListener('click', () => {
+                chips.forEach((item) => item.classList.remove('active'));
+                chip.classList.add('active');
+                applyFilter(chip.getAttribute('data-category'));
+            });
+        });
+
+        applyFilter('all');
+    });
+</script>
+{% endblock %}

@@ -110,35 +110,62 @@ Home - Zachify
 
     <div class="section-title">
 
-    <span>FEATURED COLLECTION</span>
+        <span>FEATURED COLLECTION</span>
 
-    <h2>Trending Products</h2>
+        <h2>Trending Products</h2>
 
-    <p>Carefully selected products with the best prices and quality.</p>
+        <p>Carefully selected products with the best prices and quality.</p>
 
-</div>
+    </div>
 
     <div class="product-container">
 
+        {% if products %}
         {% for product in products %}
         <div class="card" onclick="location.href='{{ url_for('product_detail', id=product.id) }}';" style="cursor: pointer;">
+            <div class="card-topbar">
+                <div class="card-badges">
+                    <span class="category">{{ product.category }}</span>
+                </div>
+                <a href="{{ url_for('remove_from_wishlist', product_id=product.id) if product.id in wishlist_ids else url_for('add_to_wishlist', product_id=product.id) }}"
+                   class="wishlist-heart{% if product.id in wishlist_ids %} active{% endif %}"
+                   aria-label="Toggle wishlist"
+                   onclick="event.stopPropagation();">
+                    <span>{% if product.id in wishlist_ids %}♥{% else %}♡{% endif %}</span>
+                </a>
+            </div>
+            
             <div class="product-image">
+                <div class="image-glow"></div>
                 <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
             </div>
+            
             <div class="product-info">
                 <h3><a href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();">{{ product.name }}</a></h3>
-                <p class="rating">
+                <div class="rating">
                     ★★★★★ <span>(4.8)</span>
+                </div>
+                <div class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</div>
+                <p class="product-short-desc">
+                    {{ product.description[:80] ~ '...' if product.description|length > 80 else product.description }}
                 </p>
-                <p class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</p>
-                <p class="category">{{ product.category }}</p>
-                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" onclick="event.stopPropagation();">
-                    <button type="submit" class="cart-btn">🛒 Add to Cart</button>
-                </form>
+                
+                <div class="card-actions">
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" onclick="event.stopPropagation();" style="flex: 1;">
+                        <button type="submit" class="cart-btn">🛒 Add to Cart</button>
+                    </form>
+                    <a href="{{ url_for('product_detail', id=product.id) }}" class="view-details-btn" onclick="event.stopPropagation();">View Details</a>
+                </div>
             </div>
         </div>
         {% endfor %}
-</div>
+        {% else %}
+            <div class="empty-message">
+                <p>No featured products are available yet. Add products through the admin panel to display them here.</p>
+            </div>
+        {% endif %}
+    </div>
+
 </section>
 <section class="features">
 

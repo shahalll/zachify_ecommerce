@@ -6,56 +6,113 @@ Products - Zachify
 
 {% block content %}
 <section class="products-banner">
-
     <span>PREMIUM COLLECTION</span>
-
     <h1>Discover Your Next Device</h1>
-
-    <p>
-        Explore laptops, smartphones, smartwatches and accessories
-        selected for performance and style.
-    </p>
-
+    <p>Explore laptops, smartphones, smartwatches and accessories selected for performance and style.</p>
 </section>
+
 <section class="products">
-
     <div class="section-title">
-
         <span>OUR COLLECTION</span>
-
         <h2>All Products</h2>
-
         <p>Browse our premium collection of electronics.</p>
-
     </div>
 
-    <div class="product-container">
-        {% for product in products %}
-        <div class="card" onclick="location.href='{{ url_for('product_detail', id=product.id) }}';" style="cursor: pointer;">
-            <div class="product-image">
-                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+    <div class="products-shell">
+        <div class="filter-bar">
+            <form id="filterForm" class="filter-form">
+                <div class="filter-field">
+                    <label for="categoryFilter">Category</label>
+                    <select id="categoryFilter" name="category">
+                        <option value="">All categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category }}" {% if category in selected_categories %}selected{% endif %}>{{ category|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="sortFilter">Price</label>
+                    <select id="sortFilter" name="sort">
+                        <option value="featured" {% if sort_by == 'featured' %}selected{% endif %}>Featured</option>
+                        <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Low to High</option>
+                        <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>High to Low</option>
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="availabilityFilter">Availability</label>
+                    <select id="availabilityFilter" name="availability">
+                        <option value="all" {% if not selected_availability or 'all' in selected_availability %}selected{% endif %}>All</option>
+                        <option value="in_stock" {% if 'in_stock' in selected_availability %}selected{% endif %}>In Stock</option>
+                    </select>
+                </div>
+
+                <button type="button" class="clear-filters-btn" id="clearFiltersBtn">Clear</button>
+            </form>
+        </div>
+
+        <div class="product-results">
+            <div class="results-toolbar">
+                <div>
+                    <p class="results-label">Curated selection</p>
+                    <h3 id="resultsCount">{{ products|length }} matching products</h3>
+                </div>
             </div>
-            <div class="product-info">
-                <h3><a href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();">{{ product.name }}</a></h3>
-                <p class="rating">
-                    ★★★★★ <span>(4.8)</span>
-                </p>
-                <p class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</p>
-                <p class="category">{{ product.category }}</p>
-                <p style="color: #A1A1AA; font-size: 14px; margin: 10px 0; line-height: 1.5; text-align: left;">
-                    {{ product.description[:90] ~ '...' if product.description|length > 90 else product.description }}
-                </p>
-                <p style="color: #A78BFA; font-size: 13px; font-weight: 600; margin-bottom: 15px; text-align: left;">
-                    Stock: {{ product.stock }} units available
-                </p>
-                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" onclick="event.stopPropagation();">
-                    <button class="cart-btn" type="submit">🛒 Add to Cart</button>
-                </form>
+
+            <div id="productsGrid" class="product-container">
+                {% include 'partials/product_cards.html' %}
             </div>
         </div>
-        {% endfor %}
     </div>
-
 </section>
 
+<script>
+    const filterForm = document.getElementById('filterForm');
+    const productsGrid = document.getElementById('productsGrid');
+    const resultsCount = document.getElementById('resultsCount');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
+    function submitFilters() {
+        const params = new URLSearchParams(new FormData(filterForm));
+        const url = `{{ url_for('products') }}?${params.toString()}`;
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                productsGrid.innerHTML = html;
+                const countText = html.includes('No products match') ? '0 matching products' : `${productsGrid.querySelectorAll('.card').length} matching products`;
+                resultsCount.textContent = countText;
+                attachWishlistHandlers();
+            });
+    }
+
+    function attachWishlistHandlers() {
+        document.querySelectorAll('.wishlist-heart').forEach((heart) => {
+            heart.addEventListener('click', (event) => {
+                const href = heart.getAttribute('href');
+                if (!href) return;
+                event.preventDefault();
+                heart.classList.remove('heart-animate');
+                void heart.offsetWidth;
+                heart.classList.add('heart-animate');
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 220);
+            });
+        });
+    }
+
+    if (filterForm) {
+        filterForm.addEventListener('change', submitFilters);
+    }
+
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            filterForm.reset();
+            submitFilters();
+        });
+    }
+
+    attachWishlistHandlers();
+</script>
 {% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}
+Wishlist - Zachify
+{% endblock %}
+
+{% block content %}
+<section class="wishlist-page">
+    <div class="wishlist-header">
+        <div>
+            <span class="hero-tag">YOUR SAVED PICKS</span>
+            <h1 style="font-size: 2rem; margin-top: 8px; color: #F8FAFC;">Wishlist</h1>
+            <p style="color: #C7D2FE; max-width: 620px; margin-top: 10px;">
+                Keep your favorite premium products close at hand and revisit them whenever you are ready to buy.
+            </p>
+        </div>
+        <a href="{{ url_for('products') }}" class="shop-btn">Continue Shopping</a>
+    </div>
+
+    {% if wishlist_items %}
+    <div class="wishlist-grid">
+        {% for entry in wishlist_items %}
+        {% set product = entry.product %}
+        <div class="wishlist-item-card">
+            <div class="wishlist-image-wrap">
+                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+            </div>
+            <div class="wishlist-product-info">
+                <div class="wishlist-product-meta">
+                    <span class="wishlist-category-pill">{{ product.category }}</span>
+                    <span class="rating">★★★★★ <span>(4.8)</span></span>
+                </div>
+                <h3 class="wishlist-product-title">{{ product.name }}</h3>
+                <div class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</div>
+                <p class="product-short-desc">
+                    {{ product.description[:100] ~ '...' if product.description|length > 100 else product.description }}
+                </p>
+                {% if product.stock > 0 %}
+                <div class="wishlist-stock">✓ In Stock</div>
+                {% else %}
+                <div class="wishlist-stock out-stock">✕ Out of Stock</div>
+                {% endif %}
+                <div class="wishlist-actions">
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" style="flex: 1;">
+                        <button class="cart-btn" type="submit">🛒 Add to Cart</button>
+                    </form>
+                    <form action="{{ url_for('remove_from_wishlist', product_id=product.id) }}" method="POST" style="flex: 1;">
+                        <button class="remove-wishlist-btn" type="submit">Remove</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-wishlist-state">
+        <div class="empty-wishlist-icon">♡</div>
+        <h3>Your Wishlist is Empty</h3>
+        <p>Save your favorite products and they will appear here.</p>
+        <a href="{{ url_for('products') }}" class="shop-btn">Continue Shopping</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

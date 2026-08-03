@@ -5,45 +5,123 @@
 {% endblock %}
 
 {% block content %}
-<section class="product-details">
-
-    <div class="details-image">
-        <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+<section class="product-details-container">
+    <div class="breadcrumb">
+        <a href="{{ url_for('home') }}">Home</a> / <a href="{{ url_for('products') }}">Products</a> / <span>{{ product.name }}</span>
     </div>
 
-    <div class="details-info">
-        <span class="product-category">{{ product.category }}</span>
-
-        <h1>{{ product.name }}</h1>
-
-        <div class="details-rating">
-            ★★★★★ <span>(4.8 rating)</span>
+    <div class="product-details">
+        <!-- Left Side: Image Canvas with Ambient Glow -->
+        <div class="details-image-container">
+            <div class="details-ambient-glow"></div>
+            <div class="details-image-wrapper">
+                <span class="badge-new details-badge">FLAGSHIP</span>
+                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" class="floating-detail-img">
+            </div>
         </div>
 
-        <div class="details-price">
-            ₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}
-        </div>
+        <!-- Right Side: Product Information & Controls -->
+        <div class="details-info">
+            <span class="product-category">{{ product.category }}</span>
 
-        <p class="details-description">
-            {{ product.description }}
-        </p>
+            <h1 class="details-title">{{ product.name }}</h1>
 
-        <p style="color: #A1A1AA; font-size: 16px; margin-bottom: 30px;">
-            <strong>Available Stock:</strong> <span style="color: #A78BFA; font-weight: 600;">{{ product.stock }} units</span>
-        </p>
+            <div class="details-rating-bar">
+                <span class="stars">★★★★★</span>
+                <span class="rating-text">4.8</span>
+                <span class="verified-badge">✓ Verified Genuine</span>
+            </div>
 
-        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" style="margin: 0;">
-                <button type="submit" class="buy-btn">
-                    🛒 Add to Cart
+            <div class="details-price-row">
+                <span class="details-price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</span>
+                <span class="tax-inclusive">Inclusive of all taxes</span>
+            </div>
+
+            <p class="details-description">
+                {{ product.description }}
+            </p>
+
+            <div class="stock-status-wrapper">
+                <div class="stock-pill {% if product.stock > 0 %}in-stock{% else %}out-of-stock{% endif %}">
+                    <span class="pulse-dot"></span>
+                    {% if product.stock > 0 %}
+                        In Stock • {{ product.stock }} units available
+                    {% else %}
+                        Currently Out of Stock
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quantity Selector UI -->
+            <div class="quantity-section">
+                <label class="quantity-label">Quantity</label>
+                <div class="quantity-selector">
+                    <button type="button" class="qty-btn minus" onclick="var input=document.getElementById('qty-input'); if(parseInt(input.value)>1) input.value=parseInt(input.value)-1;">-</button>
+                    <input type="number" id="qty-input" value="1" min="1" max="{{ product.stock }}" readonly>
+                    <button type="button" class="qty-btn plus" onclick="var input=document.getElementById('qty-input'); input.value=parseInt(input.value)+1;">+</button>
+                </div>
+            </div>
+
+            <!-- Primary Action Buttons Group -->
+            <div class="action-buttons-group">
+                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="add-to-cart-form">
+                    <button type="submit" class="buy-btn cart-fill-btn">
+                        🛒 Add to Cart
+                    </button>
+                </form>
+
+                <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="buy-now-form">
+                    <button type="submit" class="buy-now-btn">
+                        ⚡ Buy Now
+                    </button>
+                </form>
+
+                <button type="button" class="wishlist-btn" title="Add to Wishlist" onclick="this.classList.toggle('active');">
+                    ♡
                 </button>
-            </form>
+            </div>
 
-            <a href="{{ url_for('products') }}" class="explore-btn" style="text-decoration: none; padding: 18px 30px; display: inline-block;">
-                ← Back to Products
-            </a>
+            <!-- Delivery & Warranty Information Grid -->
+            <div class="info-cards-grid">
+                <div class="info-card">
+                    <div class="info-icon">🚚</div>
+                    <div class="info-content">
+                        <h4>Free Express Shipping</h4>
+                        <p>Delivered to your doorstep in 2-3 business days.</p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">🔒</div>
+                    <div class="info-content">
+                        <h4>Secure Payment</h4>
+                        <p>Safe checkout with premium payment protection.</p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">🛡️</div>
+                    <div class="info-content">
+                        <h4>1 Year Warranty</h4>
+                        <p>Official coverage with fast service and support.</p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">🔁</div>
+                    <div class="info-content">
+                        <h4>Easy Returns</h4>
+                        <p>Hassle-free returns within 30 days.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="back-link-wrapper">
+                <a href="{{ url_for('products') }}" class="back-to-products-link">
+                    ← Back to All Products
+                </a>
+            </div>
         </div>
     </div>
-
 </section>
 {% endblock %}
