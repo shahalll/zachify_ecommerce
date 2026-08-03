@@ -103,7 +103,7 @@ Shopping Cart - Zachify
                 <strong>₹{{ "%.2f"|format(grand_total) }}</strong>
             </div>
 
-            <button type="button" class="checkout-btn">Proceed to Checkout</button>
+            <a href="{{ url_for('checkout') }}" class="checkout-btn">Proceed to Checkout</a>
             <a href="{{ url_for('products') }}" class="secondary-link">Continue Shopping</a>
         </aside>
     </div>

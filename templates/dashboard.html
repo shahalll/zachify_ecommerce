@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Zachify{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="dashboard-shell">
+        <section class="dashboard-hero card glass-card">
+            <div class="dashboard-hero-content">
+                <div class="dashboard-badge">Premium account</div>
+                <h1>Welcome back, <span>{{ user.username }}</span></h1>
+                <p>Your curated experience is ready. Review your activity, keep shopping, and manage everything in one place.</p>
+                <div class="dashboard-meta-list">
+                    <div class="dashboard-meta-pill">
+                        <span class="meta-label">Email</span>
+                        <strong>{{ user.email }}</strong>
+                    </div>
+                    <div class="dashboard-meta-pill">
+                        <span class="meta-label">Member since</span>
+                        <strong>{{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'New member' }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-avatar-wrap">
+                <div class="dashboard-avatar">✦</div>
+            </div>
+        </section>
+
+        <section class="dashboard-stats-grid">
+            <article class="stat-card glass-card">
+                <div class="stat-icon">🧾</div>
+                <div>
+                    <p class="stat-label">Total Orders</p>
+                    <h3>{{ orders|length }}</h3>
+                </div>
+            </article>
+            <article class="stat-card glass-card">
+                <div class="stat-icon">♡</div>
+                <div>
+                    <p class="stat-label">Wishlist Items</p>
+                    <h3>{{ wishlist_count }}</h3>
+                </div>
+            </article>
+            <article class="stat-card glass-card">
+                <div class="stat-icon">🛒</div>
+                <div>
+                    <p class="stat-label">Cart Items</p>
+                    <h3>{{ cart_count }}</h3>
+                </div>
+            </article>
+            <article class="stat-card glass-card">
+                <div class="stat-icon">💳</div>
+                <div>
+                    <p class="stat-label">Total Spent</p>
+                    <h3>₹{{ "%.0f"|format(total_spent) }}</h3>
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-content-grid">
+            <div class="dashboard-panel glass-card">
+                <div class="panel-heading">
+                    <div>
+                        <p class="panel-kicker">Recent Orders</p>
+                        <h2>Latest activity</h2>
+                    </div>
+                    <a href="{{ url_for('products') }}" class="panel-link">Continue Shopping</a>
+                </div>
+
+                {% if orders %}
+                    <div class="order-list">
+                        {% for order in orders %}
+                            <article class="order-row">
+                                <div class="order-product">
+                                    {% set first_item = order_items_map[order.id][0] if order_items_map[order.id] else none %}
+                                    {% if first_item %}
+                                        <img src="{{ url_for('static', filename='images/' + first_item.product_image) }}" alt="{{ first_item.product_name }}">
+                                    {% endif %}
+                                    <div>
+                                        <h3>{{ first_item.product_name if first_item else 'Order #' ~ order.order_number }}</h3>
+                                        <p>{{ order.created_at.strftime('%b %d, %Y') if order.created_at else 'Recently placed' }}</p>
+                                    </div>
+                                </div>
+                                <div class="order-status {{ order.status.lower() }}">{{ order.status }}</div>
+                                <div class="order-total">₹{{ "%.0f"|format(order.total_amount) }}</div>
+                                <a href="#" class="ghost-btn">View Details</a>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>No orders yet</h3>
+                        <p>Your first premium purchase will appear here.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="dashboard-panel glass-card">
+                <div class="panel-heading">
+                    <div>
+                        <p class="panel-kicker">Quick Actions</p>
+                        <h2>Jump back in</h2>
+                    </div>
+                </div>
+                <div class="action-buttons">
+    <a href="{{ url_for('products') }}" class="action-btn primary">Continue Shopping</a>
+
+    <a href="{{ url_for('orders') }}" class="action-btn">
+        📦 My Orders
+    </a>
+
+    <a href="{{ url_for('wishlist_page') }}" class="action-btn">
+        ❤️ Wishlist
+    </a>
+
+    <a href="{{ url_for('cart') }}" class="action-btn">
+        🛒 Cart
+    </a>
+
+    <button type="button"
+            class="action-btn"
+            onclick="document.getElementById('profileForm').scrollIntoView({behavior:'smooth'})">
+        ✏️ Edit Profile
+    </button>
+</div>
+                <form id="profileForm" class="profile-form" method="post">
+                    <input type="hidden" name="profile_form" value="1">
+                    <label>
+                        Username
+                        <input type="text" name="username" value="{{ user.username }}">
+                    </label>
+                    <label>
+                        Email
+                        <input type="email" name="email" value="{{ user.email }}">
+                    </label>
+                    <label>
+                        New Password
+                        <input type="password" name="password" placeholder="Leave blank to keep current">
+                    </label>
+                    <button type="submit" class="action-btn primary full-width">Save Changes</button>
+                </form>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

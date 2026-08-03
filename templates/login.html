@@ -6,37 +6,60 @@ Login - Zachify
 
 {% block content %}
 
-<div class="login-page">
+<div class="login-wrapper">
 
-    <h1>Welcome Back 👋</h1>
+    <div class="login-card">
 
-    <p>Sign in to continue shopping on Zachify</p>
+        <div class="login-header">
 
-    <form method="POST" action="/login">
+            <h1>Welcome Back 👋</h1>
 
-        <label>Email Address</label>
+            <p>Login to continue your premium shopping experience.</p>
 
-        <input
-            type="email"
-            name="email"
-            placeholder="Enter your email"
-            required
-        >
+        </div>
 
-        <label>Password</label>
+        <form method="POST" action="/login">
 
-        <input
-            type="password"
-            name="password"
-            placeholder="Enter your password"
-            required
-        >
+            <div class="input-group">
 
-        <button type="submit">
-            Login
-        </button>
+                <label>Email Address</label>
 
-    </form>
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    required>
+
+            </div>
+
+            <div class="input-group">
+
+                <label>Password</label>
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required>
+
+            </div>
+
+            <button type="submit" class="login-btn-main">
+                Login
+            </button>
+
+        </form>
+
+        <div class="login-footer">
+
+            <p>
+                Don't have an account?
+                <a href="/register">Create Account</a>
+            </p>
+
+        </div>
+
+    </div>
 
 </div>
 

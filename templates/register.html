@@ -6,54 +6,97 @@ Register - Zachify
 
 {% block content %}
 
-<div class="login-page">
+<div class="login-wrapper">
 
-    <h1>Create Account</h1>
+    <div class="login-card">
 
-    <p>Join Zachify and start shopping today!</p>
+        <div class="login-header">
 
-    <form method="POST" action="/register">
+            <h1>Create Account 🚀</h1>
 
-        <label>Username</label>
-        <input
-            type="text"
-            name="username"
-            placeholder="Enter your username"
-            required
-        >
+            <p>
+                Join Zachify and experience premium shopping.
+            </p>
 
-        <label>Email Address</label>
-        <input
-            type="email"
-            name="email"
-            placeholder="Enter your email"
-            required
-        >
+        </div>
 
-        <label>Password</label>
-        <input
-            type="password"
-            name="password"
-            placeholder="Create a password"
-            required
-        >
+        <form method="POST" action="/register">
 
-        <label>Confirm Password</label>
-        <input
-            type="password"
-            name="confirm_password"
-            placeholder="Confirm your password"
-            required
-        >
+            <div class="input-group">
 
-        <button type="submit">Register</button>
+                <label>Username</label>
 
-    </form>
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="Enter your username"
+                    required>
 
-    <p style="margin-top:20px;">
-        Already have an account?
-        <a href="/login">Login</a>
-    </p>
+            </div>
+
+            <div class="input-group">
+
+                <label>Email Address</label>
+
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    required>
+
+            </div>
+
+            <div class="input-group">
+
+                <label>Password</label>
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Create password"
+                    required>
+
+            </div>
+
+            <div class="input-group">
+
+                <label>Confirm Password</label>
+
+                <input
+                    type="password"
+                    name="confirm_password"
+                    placeholder="Confirm password"
+                    required>
+
+            </div>
+
+            <button
+                class="login-btn-main"
+                type="submit">
+
+                Create Account
+
+            </button>
+
+        </form>
+
+        <div class="login-footer">
+
+            <p>
+
+                Already have an account?
+
+                <a href="/login">
+
+                    Login
+
+                </a>
+
+            </p>
+
+        </div>
+
+    </div>
 
 </div>
 

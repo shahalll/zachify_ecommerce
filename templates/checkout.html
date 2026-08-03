@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}
+Checkout - Zachify
+{% endblock %}
+
+{% block content %}
+<section class="checkout-page">
+    <div class="checkout-hero">
+        <div>
+            <p class="section-eyebrow">SECURE CHECKOUT</p>
+            <h1>Complete your order</h1>
+            <p>Premium delivery, flexible payment options, and a smooth finish for your selected products.</p>
+        </div>
+        <a href="{{ url_for('cart') }}" class="ghost-btn">Back to Cart</a>
+    </div>
+
+    <div class="checkout-shell">
+        <form class="checkout-form-card" method="post">
+            <div class="checkout-section">
+                <div class="checkout-section__head">
+                    <h2>Shipping details</h2>
+                    <p>We’ll keep everything secure and ready for the fastest possible dispatch.</p>
+                </div>
+
+                <div class="checkout-grid">
+                    <label>
+                        <span>Full Name</span>
+                        <input type="text" name="full_name" placeholder="Aarav Sharma" required>
+                    </label>
+                    <label>
+                        <span>Email</span>
+                        <input type="email" name="email" placeholder="you@example.com" required>
+                    </label>
+                    <label>
+                        <span>Phone Number</span>
+                        <input type="tel" name="phone" placeholder="+91 98765 43210" required>
+                    </label>
+                    <label>
+                        <span>Delivery Address</span>
+                        <input type="text" name="address" placeholder="House No., Street, Landmark" required>
+                    </label>
+                    <label>
+                        <span>City</span>
+                        <input type="text" name="city" placeholder="Mumbai" required>
+                    </label>
+                    <label>
+                        <span>State</span>
+                        <input type="text" name="state" placeholder="Maharashtra" required>
+                    </label>
+                    <label>
+                        <span>PIN Code</span>
+                        <input type="text" name="pin" placeholder="400001" required>
+                    </label>
+                </div>
+            </div>
+
+            <div class="checkout-section">
+                <div class="checkout-section__head">
+                    <h2>Payment method</h2>
+                    <p>Select the option that feels most convenient for you.</p>
+                </div>
+
+                <div class="payment-options">
+                    <label class="payment-option">
+                        <input type="radio" name="payment_method" value="cod" checked>
+                        <span>Cash on Delivery</span>
+                    </label>
+                    <label class="payment-option">
+                        <input type="radio" name="payment_method" value="upi">
+                        <span>UPI</span>
+                    </label>
+                    <label class="payment-option">
+                        <input type="radio" name="payment_method" value="card">
+                        <span>Credit / Debit Card</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="place-order-btn">Place Order</button>
+        </form>
+
+        <aside class="checkout-summary-card">
+            <div class="summary-head">
+                <p class="section-eyebrow">ORDER SUMMARY</p>
+                <h2>Your premium haul</h2>
+            </div>
+
+            <div class="summary-items">
+                {% for item in cart_items %}
+                {% set product = item['product'] %}
+                <div class="summary-item">
+                    <div class="summary-item__media">
+                        <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+                    </div>
+                    <div class="summary-item__info">
+                        <h3>{{ product.name }}</h3>
+                        <p>Qty {{ item['quantity'] }}</p>
+                        <strong>₹{{ "%.2f"|format(item['item_subtotal']) }}</strong>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="summary-list">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <strong>₹{{ "%.2f"|format(subtotal) }}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <strong>{% if shipping == 0 %}Free{% else %}₹{{ "%.2f"|format(shipping) }}{% endif %}</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Discount</span>
+                    <strong>{% if discount > 0 %}-₹{{ "%.2f"|format(discount) }}{% else %}—{% endif %}</strong>
+                </div>
+            </div>
+
+            <div class="summary-total">
+                <span>Grand total</span>
+                <strong>₹{{ "%.2f"|format(grand_total) }}</strong>
+            </div>
+        </aside>
+    </div>
+</section>
+{% endblock %}

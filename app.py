@@ -1,9 +1,10 @@
+import uuid
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, desc
 
-from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+from flask import Flask, flash,render_template, request, redirect, session, url_for, jsonify
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "zachify_secret_key"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///zachify.db"
@@ -52,8 +53,10 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
 
     password = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     wishlists = db.relationship("Wishlist", backref="user", lazy=True, cascade="all, delete-orphan")
+    orders = db.relationship("Order", backref="user", lazy=True, cascade="all, delete-orphan")
 
 
 class Product(db.Model):
@@ -105,7 +108,32 @@ class Wishlist(db.Model):
     )
 
 
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    order_number = db.Column(db.String(50), unique=True, nullable=False)
+    status = db.Column(db.String(50), nullable=False, default="Processing")
+    total_amount = db.Column(db.Float, nullable=False, default=0.0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = db.relationship("OrderItem", backref="order", lazy=True, cascade="all, delete-orphan")
+
+
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    product_name = db.Column(db.String(200), nullable=False)
+    product_image = db.Column(db.String(200), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    unit_price = db.Column(db.Float, nullable=False, default=0.0)
+    total_price = db.Column(db.Float, nullable=False, default=0.0)
+
+
 def seed_default_products():
+    Product.query.filter(Product.name.ilike("%test laptop%")).delete(synchronize_session=False)
+    db.session.commit()
+
     if Product.query.count() == 0:
         products = [
             Product(
@@ -143,6 +171,61 @@ def seed_default_products():
         ]
         db.session.add_all(products)
         db.session.commit()
+
+@app.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    current_user = get_current_user()
+    if not current_user:
+        return redirect(url_for("login"))
+
+    if request.method == "POST" and request.form.get("profile_form") == "1":
+        new_username = request.form.get("username", "").strip()
+        new_email = request.form.get("email", "").strip()
+        new_password = request.form.get("password", "").strip()
+
+        if new_username:
+            current_user.username = new_username
+        if new_email:
+            existing_user = User.query.filter(User.email == new_email, User.id != current_user.id).first()
+            if existing_user:
+                return "This email is already registered."
+            current_user.email = new_email
+        if new_password:
+            current_user.password = generate_password_hash(new_password)
+
+        db.session.commit()
+        session["username"] = current_user.username
+        return redirect(url_for("dashboard"))
+
+    orders = (
+        Order.query.filter_by(user_id=current_user.id)
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+
+    order_items_map = {}
+    for order in orders:
+        order_items_map[order.id] = (
+            OrderItem.query.filter_by(order_id=order.id)
+            .order_by(OrderItem.id.asc())
+            .all()
+        )
+
+    wishlist_count = Wishlist.query.filter_by(user_id=current_user.id).count()
+    cart_data = session.get("cart", {})
+    cart_count = sum(int(quantity) for quantity in cart_data.values() if str(quantity).isdigit())
+    total_spent = sum(order.total_amount for order in orders)
+
+    return render_template(
+        "dashboard.html",
+        user=current_user,
+        orders=orders,
+        order_items_map=order_items_map,
+        wishlist_count=wishlist_count,
+        cart_count=cart_count,
+        total_spent=total_spent,
+    )
+
 
 @app.route("/")
 def home():
@@ -320,13 +403,18 @@ def register():
         username = request.form["username"]
         email = request.form["email"]
         password = request.form["password"]
+        confirm_password = request.form["confirm_password"]
+        if password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return redirect(url_for("register"))
         hashed_password = generate_password_hash(password)
 
         # Check if email already exists
         existing_user = User.query.filter_by(email=email).first()
 
         if existing_user:
-            return "This email is already registered."
+           flash("Email already registered.", "danger")
+           return redirect(url_for("register"))
 
         new_user = User(
             username=username,
@@ -337,7 +425,8 @@ def register():
         db.session.add(new_user)
         db.session.commit()
 
-        return "Registration Successful!"
+        flash("Registration successful! Please login.", "success")
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 @app.route("/logout")
@@ -420,26 +509,137 @@ def admin():
 
     return render_template("admin.html", products=products)
 
-@app.route("/cart")
-def cart():
-
+def get_cart_summary():
     cart = session.get("cart", {})
-
-    product_ids = [int(pid) for pid in cart.keys()]
+    product_ids = [int(pid) for pid in cart.keys() if str(pid).isdigit()]
 
     products = Product.query.filter(Product.id.in_(product_ids)).all()
+    product_lookup = {product.id: product for product in products}
 
-    total = 0
+    cart_products = []
+    subtotal = 0.0
 
-    for product in products:
+    for product_id in product_ids:
+        product = product_lookup.get(product_id)
+        if not product:
+            continue
 
-        total += product.price * cart[str(product.id)]
+        quantity = int(cart.get(str(product_id), 0))
+        if quantity <= 0:
+            continue
 
+        item_subtotal = product.price * quantity
+        subtotal += item_subtotal
+        cart_products.append({
+            "product": product,
+            "quantity": quantity,
+            "item_subtotal": item_subtotal,
+        })
+
+    shipping = 0 if subtotal >= 50000 else 299
+    discount = subtotal * 0.10 if subtotal >= 30000 else 0
+    grand_total = subtotal + shipping - discount
+
+    return {
+        "cart": cart,
+        "products": cart_products,
+        "subtotal": subtotal,
+        "shipping": shipping,
+        "discount": discount,
+        "grand_total": grand_total,
+    }
+
+
+@app.route("/cart")
+def cart():
+    summary = get_cart_summary()
     return render_template(
         "cart.html",
-        products=products,
-        cart=cart,
-        total=total
+        products=[item["product"] for item in summary["products"]],
+        cart=summary["cart"],
+        total=summary["subtotal"],
+        subtotal=summary["subtotal"],
+        shipping=summary["shipping"],
+        discount=summary["discount"],
+        grand_total=summary["grand_total"],
+        cart_items=summary["products"],
+    )
+
+
+@app.route("/checkout", methods=["GET", "POST"])
+def checkout():
+
+    summary = get_cart_summary()
+
+    if not summary["products"]:
+        return redirect(url_for("cart"))
+
+    if request.method == "POST":
+
+        if "user_id" not in session:
+            flash("Please login before placing an order.", "danger")
+            return redirect(url_for("login"))
+
+        order = Order(
+            user_id=session["user_id"],
+            order_number="ZACH-" + uuid.uuid4().hex[:8].upper(),
+            total_amount=summary["grand_total"],
+            status="Processing"
+        )
+
+        db.session.add(order)
+        db.session.flush()
+
+        for item in summary["products"]:
+
+            product = item["product"]
+            quantity = item["quantity"]
+
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                product_name=product.name,
+                product_image=product.image,
+                quantity=quantity,
+                unit_price=product.price,
+                total_price=product.price * quantity
+            )
+
+            db.session.add(order_item)
+
+        db.session.commit()
+
+        session["cart"] = {}
+        session.modified = True
+
+        flash("Order placed successfully!", "success")
+
+        return redirect(url_for("dashboard"))
+
+    return render_template(
+        "checkout.html",
+        products=[item["product"] for item in summary["products"]],
+        cart=summary["cart"],
+        subtotal=summary["subtotal"],
+        shipping=summary["shipping"],
+        discount=summary["discount"],
+        grand_total=summary["grand_total"],
+        cart_items=summary["products"],
+    )
+@app.route("/orders")
+def orders():
+
+    if "user_id" not in session:
+        flash("Please login first.", "danger")
+        return redirect(url_for("login"))
+
+    orders = Order.query.filter_by(
+        user_id=session["user_id"]
+    ).order_by(Order.created_at.desc()).all()
+
+    return render_template(
+        "orders.html",
+        orders=orders
     )
 
 @app.route("/add_to_cart/<int:product_id>", methods=["GET", "POST"])
