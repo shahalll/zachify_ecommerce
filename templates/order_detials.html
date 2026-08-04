@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}
+Order Details - Zachify
+{% endblock %}
+
+{% block content %}
+
+<div class="order-details-page">
+
+    <div class="order-header">
+
+        <div>
+
+            <p class="order-kicker">ORDER DETAILS</p>
+
+            <h1>Order #{{ order.order_number }}</h1>
+
+            <p>
+                Placed on
+                {{ order.created_at.strftime("%d %b %Y") }}
+            </p>
+
+        </div>
+
+        <a href="{{ url_for('orders') }}" class="back-btn">
+
+            ← Back to Orders
+
+        </a>
+
+    </div>
+
+    <div class="order-card">
+
+        <div class="order-meta">
+
+            <span>Status</span>
+
+            <strong>{{ order.status }}</strong>
+
+        </div>
+
+        <div class="order-meta">
+
+            <span>Total Amount</span>
+
+            <strong>₹{{ "%.2f"|format(order.total_amount) }}</strong>
+
+        </div>
+
+    </div>
+
+   <div class="order-card">
+
+    {% for item in order.items %}
+
+    <div class="order-item">
+
+        <div class="order-product">
+
+            <img src="{{ url_for('static', filename='images/' + item.product_image) }}"
+                 alt="{{ item.product_name }}">
+
+            <div>
+                <h3>{{ item.product_name }}</h3>
+                <p>Quantity: {{ item.quantity }}</p>
+                <p>Unit Price: ₹{{ "%.2f"|format(item.unit_price) }}</p>
+            </div>
+
+        </div>
+
+        <div class="order-price">
+            <h3>₹{{ "%.2f"|format(item.total_price) }}</h3>
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+    <div class="order-total">
+        <h2>Grand Total</h2>
+        <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
+    </div>
+
+</div>
+
+</div>
+
+{% endblock %}

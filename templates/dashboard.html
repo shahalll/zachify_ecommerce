@@ -82,7 +82,10 @@
                                 </div>
                                 <div class="order-status {{ order.status.lower() }}">{{ order.status }}</div>
                                 <div class="order-total">₹{{ "%.0f"|format(order.total_amount) }}</div>
-                                <a href="#" class="ghost-btn">View Details</a>
+                                <a href="{{ url_for('order_details', order_id=order.id) }}"
+   class="ghost-btn">
+    View Details
+</a>
                             </article>
                         {% endfor %}
                     </div>

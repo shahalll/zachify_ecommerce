@@ -641,7 +641,22 @@ def orders():
         "orders.html",
         orders=orders
     )
+@app.route("/order/<int:order_id>")
+def order_details(order_id):
 
+    if "user_id" not in session:
+        flash("Please login first.", "danger")
+        return redirect(url_for("login"))
+
+    order = Order.query.filter_by(
+        id=order_id,
+        user_id=session["user_id"]
+    ).first_or_404()
+
+    return render_template(
+        "order_detials.html",
+        order=order
+    )
 @app.route("/add_to_cart/<int:product_id>", methods=["GET", "POST"])
 def add_to_cart(product_id):
 
