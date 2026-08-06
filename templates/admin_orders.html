@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}
+Admin Orders
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-container">
+
+    <div class="admin-header">
+
+        <div>
+
+            <p class="admin-kicker">
+                ORDER MANAGEMENT
+            </p>
+
+            <h1>Customer Orders</h1>
+
+            <p class="admin-subtitle">
+                Manage and track every customer order.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="table-card">
+
+        <table class="product-table">
+
+            <tr>
+
+                <th>Order No</th>
+                <th>Customer ID</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+
+            </tr>
+
+            {% for order in orders %}
+
+            <tr>
+
+                <td>{{ order.order_number }}</td>
+
+                <td>{{ order.user_id }}</td>
+
+                <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+
+                <td>
+
+    <span class="status-badge {{ order.status|lower }}">
+
+        {{ order.status }}
+
+    </span>
+
+</td>
+
+                <td>
+
+                    {{ order.created_at.strftime("%d %b %Y") }}
+
+                </td>
+
+                <td>
+
+                   {% if order.status != "Delivered" %}
+
+<a href="{{ url_for('change_order_status', order_id=order.id) }}"
+   class="edit-btn">
+
+    Next Stage →
+
+</a>
+
+{% else %}
+
+<span style="color:#22c55e;font-weight:bold;">
+    ✓ Completed
+</span>
+
+{% endif %}
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

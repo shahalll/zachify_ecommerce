@@ -5,34 +5,90 @@ Admin Dashboard
 {% endblock %}
 
 {% block content %}
-
 <div class="admin-container">
 
-    <h1>Admin Dashboard</h1>
+    <div class="admin-header">
+
+        <div>
+
+            <p class="admin-kicker">
+                ZACHIFY ADMIN
+            </p>
+
+            <h1>Store Dashboard</h1>
+
+            <p class="admin-subtitle">
+                Manage products, orders, customers and revenue from one place.
+            </p>
+
+        </div>
+
+        <div class="admin-profile">
+
+            <div class="admin-avatar">
+                A
+            </div>
+
+        </div>
+
+    </div>
 <div class="dashboard-cards">
 
     <div class="dashboard-card">
-        <h3>{{ products|length }}</h3>
+        <div class="card-icon">📦</div>
+
+        <h2>{{ total_products }}</h2>
+
         <p>Total Products</p>
     </div>
 
     <div class="dashboard-card">
-        <h3>1</h3>
-        <p>Admin Users</p>
+        <div class="card-icon">👥</div>
+
+        <h2>{{ total_users }}</h2>
+
+        <p>Customers</p>
     </div>
 
     <div class="dashboard-card">
-        <h3>0</h3>
+        <div class="card-icon">🧾</div>
+
+        <h2>{{ total_orders }}</h2>
+
         <p>Orders</p>
     </div>
 
     <div class="dashboard-card">
-        <h3>₹0</h3>
-        <p>Revenue</p>
+        <div class="card-icon">💰</div>
+
+        <h2>₹{{ "%.0f"|format(total_revenue) }}</h2>
+
+        <p>Total Revenue</p>
     </div>
 
 </div>
-    <h2>Add New Product</h2>
+<div class="quick-actions">
+
+    <a href="#add-product" class="quick-btn">
+        ➕ Add Product
+    </a>
+
+    <a href="#product-list" class="quick-btn">
+        📦 Products
+    </a>
+
+    <a href="{{ url_for('admin_orders') }}" class="quick-btn">
+    🧾 Orders
+</a>
+
+    <a href="#" class="quick-btn">
+        👥 Users
+    </a>
+
+</div>
+    <div class="admin-form-card">
+
+    <h2 id="add-product">Add New Product</h2>
 
     <form action="/admin" method="POST">
 
@@ -57,21 +113,50 @@ Admin Dashboard
         </button>
 
     </form>
-<hr>
+    </div>
 
-<h2>Product List</h2>
+<div class="section-header">
+
+    <div>
+
+        <p class="section-kicker">
+            INVENTORY
+        </p>
+
+        <h2>
+            Product Inventory
+        </h2>
+
+    </div>
+
+    <div>
+
+        <input
+            type="text"
+            placeholder="Search products..."
+            class="inventory-search"
+        >
+
+    </div>
+
+</div>
+
+
+<div class="table-card">
 
 <table class="product-table">
 
     <tr>
-    <th>ID</th>
-    <th>Name</th>
-    <th>Price</th>
-    <th>Category</th>
-    <th>Stock</th>
-    <th>Edit</th>
-<th>Delete</th>
-</tr>
+
+        <th>ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Category</th>
+        <th>Stock</th>
+        <th>Edit</th>
+        <th>Delete</th>
+
+    </tr>
 
     {% for product in products %}
 
@@ -86,22 +171,33 @@ Admin Dashboard
         <td>{{ product.category }}</td>
 
         <td>{{ product.stock }}</td>
-<td>
-    <a href="/edit_product/{{ product.id }}" class="edit-btn">
-        Edit
-    </a>
-</td>
 
-<td>
-    <a href="/delete_product/{{ product.id }}" class="delete-btn">
-        Delete
-    </a>
-</td>
+        <td>
+
+            <a href="/edit_product/{{ product.id }}" class="edit-btn">
+
+                Edit
+
+            </a>
+
+        </td>
+
+        <td>
+
+            <a href="/delete_product/{{ product.id }}" class="delete-btn">
+
+                Delete
+
+            </a>
+
+        </td>
+
     </tr>
 
     {% endfor %}
 
 </table>
+
 </div>
 
 {% endblock %}

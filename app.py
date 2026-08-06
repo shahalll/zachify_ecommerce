@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, desc
+from sqlalchemy import or_, desc,func
 
 from flask import Flask, flash,render_template, request, redirect, session, url_for, jsonify
 app = Flask(__name__)
@@ -234,6 +234,9 @@ def home():
 
     wishlist_ids = get_user_wishlist_ids(get_current_user())
     return render_template("index.html", products=products, wishlist_ids=wishlist_ids)
+@app.route("/about")
+def about():
+    return render_template("about.html")
 @app.route("/search")
 def search():
     query = request.args.get("q", "").strip()
@@ -366,9 +369,6 @@ def products():
 def product_detail(id):
     product = Product.query.get_or_404(id)
     return render_template("product_details.html", product=product)
-@app.route("/about")
-def about():
-    return render_template("about.html")
 
 @app.route("/contact")
 def contact():
@@ -505,51 +505,58 @@ def admin():
         db.session.add(new_product)
         db.session.commit()
 
+    # Fetch all products
     products = Product.query.all()
 
-    return render_template("admin.html", products=products)
+    # Dashboard statistics
+    total_products = Product.query.count()
+    total_users = User.query.count()
+    total_orders = Order.query.count()
 
-def get_cart_summary():
-    cart = session.get("cart", {})
-    product_ids = [int(pid) for pid in cart.keys() if str(pid).isdigit()]
+    total_revenue = db.session.query(
+    func.sum(Order.total_amount)
+).scalar() or 0
 
-    products = Product.query.filter(Product.id.in_(product_ids)).all()
-    product_lookup = {product.id: product for product in products}
+    return render_template(
+        "admin.html",
+        products=products,
+        total_products=total_products,
+        total_users=total_users,
+        total_orders=total_orders,
+        total_revenue=total_revenue
+    )
+@app.route("/admin/orders")
+def admin_orders():
 
-    cart_products = []
-    subtotal = 0.0
+    orders = Order.query.order_by(Order.created_at.desc()).all()
 
-    for product_id in product_ids:
-        product = product_lookup.get(product_id)
-        if not product:
-            continue
+    return render_template(
+        "admin_orders.html",
+        orders=orders
+    )
+@app.route("/admin/order/<int:order_id>/status")
+def change_order_status(order_id):
 
-        quantity = int(cart.get(str(product_id), 0))
-        if quantity <= 0:
-            continue
+    order = Order.query.get_or_404(order_id)
 
-        item_subtotal = product.price * quantity
-        subtotal += item_subtotal
-        cart_products.append({
-            "product": product,
-            "quantity": quantity,
-            "item_subtotal": item_subtotal,
-        })
+    status_flow = [
+        "Processing",
+        "Packed",
+        "Shipped",
+        "Delivered"
+    ]
 
-    shipping = 0 if subtotal >= 50000 else 299
-    discount = subtotal * 0.10 if subtotal >= 30000 else 0
-    grand_total = subtotal + shipping - discount
+    if order.status in status_flow:
 
-    return {
-        "cart": cart,
-        "products": cart_products,
-        "subtotal": subtotal,
-        "shipping": shipping,
-        "discount": discount,
-        "grand_total": grand_total,
-    }
+        current = status_flow.index(order.status)
 
+        if current < len(status_flow) - 1:
 
+            order.status = status_flow[current + 1]
+
+            db.session.commit()
+
+    return redirect(url_for("admin_orders"))
 @app.route("/cart")
 def cart():
     summary = get_cart_summary()
