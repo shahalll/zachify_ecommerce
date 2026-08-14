@@ -1,10 +1,12 @@
 import uuid
+from functools import wraps
 from datetime import datetime
+import click
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, desc,func
+from sqlalchemy import or_, desc, func, text, inspect
 
-from flask import Flask, flash,render_template, request, redirect, session, url_for, jsonify
+from flask import Flask, flash, render_template, request, redirect, session, url_for, jsonify, abort
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "zachify_secret_key"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///zachify.db"
@@ -23,6 +25,33 @@ def get_current_user():
         return User.query.filter_by(username=username).first()
 
     return None
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if not current_user:
+            flash("Please login to access the admin area.", "danger")
+            return redirect(url_for("login"))
+        if not bool(current_user.is_admin):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def migrate_sqlite_schema():
+    """Safely adds missing columns to existing SQLite database without losing data."""
+    try:
+        inspector = inspect(db.engine)
+        if "user" in inspector.get_table_names():
+            columns = [col["name"] for col in inspector.get_columns("user")]
+            if "is_admin" not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0;"))
+                    conn.commit()
+    except Exception as e:
+        print(f"Migration notice: {e}")
 
 
 def get_user_wishlist_ids(user):
@@ -53,6 +82,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
 
     password = db.Column(db.String(200), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     wishlists = db.relationship("Wishlist", backref="user", lazy=True, cascade="all, delete-orphan")
@@ -379,19 +409,18 @@ def login():
 
     if request.method == "POST":
 
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter(User.email.ilike(email)).first()
 
         if user and check_password_hash(user.password, password):
             session["username"] = user.username
             session["user_id"] = user.id
             return redirect(url_for("home"))
-
-
         else:
-            return "Invalid Email or Password!"
+            flash("Invalid Email or Password!", "danger")
+            return render_template("login.html")
 
     return render_template("login.html")
 
@@ -400,17 +429,17 @@ def register():
 
     if request.method == "POST":
 
-        username = request.form["username"]
-        email = request.form["email"]
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
             return redirect(url_for("register"))
         hashed_password = generate_password_hash(password)
 
-        # Check if email already exists
-        existing_user = User.query.filter_by(email=email).first()
+        # Check if email already exists (case-insensitive)
+        existing_user = User.query.filter(User.email.ilike(email)).first()
 
         if existing_user:
            flash("Email already registered.", "danger")
@@ -482,6 +511,7 @@ def remove_from_wishlist(product_id):
 
 
 @app.route("/admin", methods=["GET", "POST"])
+@admin_required
 def admin():
 
     if request.method == "POST":
@@ -526,6 +556,7 @@ def admin():
         total_revenue=total_revenue
     )
 @app.route("/admin/orders")
+@admin_required
 def admin_orders():
 
     orders = Order.query.order_by(Order.created_at.desc()).all()
@@ -535,6 +566,7 @@ def admin_orders():
         orders=orders
     )
 @app.route("/admin/order/<int:order_id>/status")
+@admin_required
 def change_order_status(order_id):
 
     order = Order.query.get_or_404(order_id)
@@ -557,6 +589,65 @@ def change_order_status(order_id):
             db.session.commit()
 
     return redirect(url_for("admin_orders"))
+
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    users = User.query.order_by(User.created_at.desc()).all()
+
+    total_users = len(users)
+    total_admins = sum(1 for u in users if u.is_admin)
+    total_customers = total_users - total_admins
+
+    return render_template(
+        "admin_users.html",
+        users=users,
+        total_users=total_users,
+        total_admins=total_admins,
+        total_customers=total_customers,
+    )
+
+
+def get_cart_summary():
+    cart = session.get("cart", {})
+    product_ids = [int(pid) for pid in cart.keys() if str(pid).isdigit()]
+
+    products = Product.query.filter(Product.id.in_(product_ids)).all() if product_ids else []
+    product_lookup = {product.id: product for product in products}
+
+    cart_products = []
+    subtotal = 0.0
+
+    for product_id in product_ids:
+        product = product_lookup.get(product_id)
+        if not product:
+            continue
+
+        quantity = int(cart.get(str(product_id), 0))
+        if quantity <= 0:
+            continue
+
+        item_subtotal = product.price * quantity
+        subtotal += item_subtotal
+        cart_products.append({
+            "product": product,
+            "quantity": quantity,
+            "item_subtotal": item_subtotal,
+        })
+
+    shipping = 0 if subtotal >= 50000 else (0 if subtotal == 0 else 299)
+    discount = subtotal * 0.10 if subtotal >= 30000 else 0
+    grand_total = subtotal + shipping - discount
+
+    return {
+        "cart": cart,
+        "products": cart_products,
+        "subtotal": subtotal,
+        "shipping": shipping,
+        "discount": discount,
+        "grand_total": grand_total,
+    }
 @app.route("/cart")
 def cart():
     summary = get_cart_summary()
@@ -730,6 +821,7 @@ def decrease_quantity(product_id):
 
     return redirect("/cart")
 @app.route("/delete_product/<int:id>")
+@admin_required
 def delete_product(id):
 
     product = Product.query.get_or_404(id)
@@ -740,6 +832,7 @@ def delete_product(id):
 
     return redirect("/admin")
 @app.route("/edit_product/<int:id>", methods=["GET", "POST"])
+@admin_required
 def edit_product(id):
 
     product = Product.query.get_or_404(id)
@@ -762,8 +855,40 @@ def edit_product(id):
 def clear_cart():
     session.clear()
     return "Session Cleared!"
+
+
+@app.cli.command("make-admin")
+@click.argument("email")
+def make_admin_cli(email):
+    """Grant administrator privileges to an existing user by email."""
+    migrate_sqlite_schema()
+    user = User.query.filter(User.email.ilike(email.strip())).first()
+    if not user:
+        click.echo(f"Error: User with email '{email}' not found.")
+        return
+    user.is_admin = True
+    db.session.commit()
+    click.echo(f"Success: User '{user.username}' ({user.email}) is now an administrator.")
+
+
+@app.cli.command("set-password")
+@click.argument("email")
+@click.argument("new_password")
+def set_password_cli(email, new_password):
+    """Set or reset password for an existing user by email."""
+    migrate_sqlite_schema()
+    user = User.query.filter(User.email.ilike(email.strip())).first()
+    if not user:
+        click.echo(f"Error: User with email '{email}' not found.")
+        return
+    user.password = generate_password_hash(new_password)
+    db.session.commit()
+    click.echo(f"Success: Password updated successfully for '{user.username}' ({user.email}).")
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+        migrate_sqlite_schema()
         seed_default_products()
     app.run(debug=True)

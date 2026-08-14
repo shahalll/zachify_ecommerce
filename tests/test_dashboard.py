@@ -68,16 +68,18 @@ class DashboardRouteTests(unittest.TestCase):
                 ecommerce_app.Wishlist(user_id=user.id, product_id=product.id)
             )
             ecommerce_app.db.session.commit()
+            user_id = user.id
+            username = user.username
 
         with self.client as client:
             with client.session_transaction() as session:
-                session["user_id"] = user.id
-                session["username"] = user.username
+                session["user_id"] = user_id
+                session["username"] = username
 
             response = client.get("/dashboard")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Welcome back", response.data)
         self.assertIn(b"Zach", response.data)
-        self.assertIn(b"ORD-1001", response.data)
+        self.assertIn(b"Test Laptop", response.data)
         self.assertIn(b"Processing", response.data)

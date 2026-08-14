@@ -30,7 +30,9 @@
         {% if session.get("username") %}
             <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
         {% endif %}
-        <li><a href="{{ url_for('admin') }}">Admin</a></li>
+        {% if current_user and current_user.is_admin %}
+            <li><a href="{{ url_for('admin') }}">Admin</a></li>
+        {% endif %}
     </ul>
 
     <!-- Search -->
