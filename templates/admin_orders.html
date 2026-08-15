@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-Admin Orders
+Customer Orders - Zachify Admin
 {% endblock %}
 
 {% block content %}
@@ -9,99 +9,155 @@ Admin Orders
 <div class="admin-container">
 
     <div class="admin-header">
-
         <div>
-
-            <p class="admin-kicker">
-                ORDER MANAGEMENT
-            </p>
-
+            <p class="admin-kicker">ORDER MANAGEMENT</p>
             <h1>Customer Orders</h1>
-
             <p class="admin-subtitle">
-                Manage and track every customer order.
+                Manage, review, and update customer order fulfillment statuses.
             </p>
-
         </div>
 
-        <div>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <a href="{{ url_for('admin') }}" class="quick-btn" style="display: inline-flex; align-items: center; gap: 8px;">
                 ← Back to Dashboard
             </a>
         </div>
+    </div>
 
+    <!-- Summary Metrics -->
+    <div class="dashboard-cards">
+        <div class="dashboard-card">
+            <div class="card-icon">🧾</div>
+            <h2>{{ orders|length }}</h2>
+            <p>Total Orders</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">⏳</div>
+            <h2>{{ orders|selectattr('status', 'equalto', 'Processing')|list|length }}</h2>
+            <p>Processing</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">🚚</div>
+            <h2>{{ orders|selectattr('status', 'equalto', 'Shipped')|list|length }}</h2>
+            <p>Shipped</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">✅</div>
+            <h2>{{ orders|selectattr('status', 'equalto', 'Delivered')|list|length }}</h2>
+            <p>Delivered</p>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="quick-actions">
+        <a href="{{ url_for('admin') }}" class="quick-btn">
+            ← Dashboard
+        </a>
+        <a href="{{ url_for('admin_products') }}" class="quick-btn">
+            📦 Products
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn">
+            👥 Users
+        </a>
+    </div>
+
+    <!-- Table Header & Search -->
+    <div class="section-header" style="margin-top: 20px;">
+        <div>
+            <p class="section-kicker">ALL ORDERS</p>
+            <h2>Orders List ({{ orders|length }})</h2>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input
+                type="text"
+                id="orderSearchInput"
+                placeholder="Search by Order # or Customer..."
+                class="inventory-search"
+            >
+        </div>
     </div>
 
     <div class="table-card">
+        <table class="product-table" id="adminOrdersTable">
+            <thead>
+                <tr>
+                    <th>Order No</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th style="width: 140px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr class="order-row" data-search="{{ order.order_number|lower }} {{ (order.user.username if order.user else '')|lower }} {{ (order.user.email if order.user else '')|lower }} {{ order.user_id }}">
+                    <td>
+                        <strong style="color: #a78bfa; font-family: monospace; font-size: 15px;">
+                            {{ order.order_number }}
+                        </strong>
+                    </td>
 
-        <table class="product-table">
+                    <td style="text-align: left;">
+                        <div style="font-weight: 600; color: #ffffff;">
+                            {{ order.user.username if order.user else 'User #' ~ order.user_id }}
+                        </div>
+                        <small style="color: #94a3b8;">
+                            Customer ID: #{{ order.user_id }} {% if order.user %}&bull; {{ order.user.email }}{% endif %}
+                        </small>
+                    </td>
 
-            <tr>
+                    <td style="color: #38bdf8; font-weight: 700; font-size: 15px;">
+                        ₹{{ "%.2f"|format(order.total_amount) }}
+                    </td>
 
-                <th>Order No</th>
-                <th>Customer ID</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Action</th>
+                    <td>
+                        <span class="status-badge {{ order.status|lower }}">
+                            {{ order.status }}
+                        </span>
+                    </td>
 
-            </tr>
+                    <td style="color: #cbd5e1; font-size: 14px;">
+                        {{ order.created_at.strftime("%d %b %Y") }}
+                    </td>
 
-            {% for order in orders %}
-
-            <tr>
-
-                <td>{{ order.order_number }}</td>
-
-                <td>{{ order.user_id }}</td>
-
-                <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
-
-                <td>
-
-    <span class="status-badge {{ order.status|lower }}">
-
-        {{ order.status }}
-
-    </span>
-
-</td>
-
-                <td>
-
-                    {{ order.created_at.strftime("%d %b %Y") }}
-
-                </td>
-
-                <td>
-
-                   {% if order.status != "Delivered" %}
-
-<a href="{{ url_for('change_order_status', order_id=order.id) }}"
-   class="edit-btn">
-
-    Next Stage →
-
-</a>
-
-{% else %}
-
-<span style="color:#22c55e;font-weight:bold;">
-    ✓ Completed
-</span>
-
-{% endif %}
-
-                </td>
-
-            </tr>
-
-            {% endfor %}
-
+                    <td>
+                        <a href="{{ url_for('admin_order_details', order_id=order.id) }}" class="edit-btn" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.35);">
+                            👁️ View Details
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #94a3b8; padding: 40px;">
+                        <div style="font-size: 36px; margin-bottom: 10px;">🧾</div>
+                        <p style="font-size: 16px; font-weight: 600; color: #ffffff;">No customer orders placed yet.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
-
     </div>
 
 </div>
+
+<script>
+    const searchInput = document.getElementById('orderSearchInput');
+    const rows = document.querySelectorAll('.order-row');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            rows.forEach(row => {
+                const text = row.getAttribute('data-search') || '';
+                row.style.display = (!query || text.includes(query)) ? '' : 'none';
+            });
+        });
+    }
+</script>
 
 {% endblock %}

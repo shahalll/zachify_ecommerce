@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}
+Admin Products - Zachify
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+
+    <div class="admin-header">
+        <div>
+            <p class="admin-kicker">INVENTORY MANAGEMENT</p>
+            <h1>Product Catalog</h1>
+            <p class="admin-subtitle">
+                Manage, search, edit, and organize all items in your store.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('admin_add_product') }}" class="add-product-btn">
+                ➕ Add New Product
+            </a>
+            <a href="{{ url_for('admin') }}" class="quick-btn" style="display: inline-flex; align-items: center; gap: 8px;">
+                ← Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="dashboard-cards">
+        <div class="dashboard-card">
+            <div class="card-icon">📦</div>
+            <h2>{{ total_products }}</h2>
+            <p>Total Products</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">✅</div>
+            <h2>{{ in_stock_count }}</h2>
+            <p>In Stock</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">⚠️</div>
+            <h2>{{ low_stock_count }}</h2>
+            <p>Low Stock (&le; 3)</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">🚫</div>
+            <h2>{{ out_of_stock_count }}</h2>
+            <p>Out of Stock</p>
+        </div>
+    </div>
+
+    <!-- Quick Navigation Links -->
+    <div class="quick-actions">
+        <a href="{{ url_for('admin_add_product') }}" class="quick-btn add-btn">
+            ➕ Add Product
+        </a>
+        <a href="{{ url_for('admin') }}" class="quick-btn">
+            ← Dashboard
+        </a>
+        <a href="{{ url_for('admin_orders') }}" class="quick-btn">
+            🧾 Orders
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn">
+            👥 Users
+        </a>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="section-header" style="margin-top: 20px;">
+        <div>
+            <p class="section-kicker">CATALOG INVENTORY</p>
+            <h2>All Products ({{ products|length }})</h2>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <select id="categoryFilter" class="inventory-search" style="width: 180px; cursor: pointer;">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat|lower }}" {% if selected_category and selected_category|lower == cat|lower %}selected{% endif %}>
+                    {{ cat|capitalize }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <input
+                type="text"
+                id="productSearchInput"
+                placeholder="Search by name, ID or category..."
+                class="inventory-search"
+                value="{{ search_query or '' }}"
+            >
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="table-card">
+        <table class="product-table" id="productsTable">
+            <thead>
+                <tr>
+                    <th style="width: 70px;">Image</th>
+                    <th style="width: 60px;">ID</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th style="width: 100px;">Edit</th>
+                    <th style="width: 100px;">Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="product-row" data-name="{{ product.name|lower }}" data-category="{{ product.category|lower }}" data-id="{{ product.id }}">
+                    <td>
+                        <div class="admin-product-thumb">
+                            {% if product.image.startswith('http://') or product.image.startswith('https://') %}
+                                <img src="{{ product.image }}" alt="{{ product.name }}" class="admin-thumb-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <span class="admin-thumb-placeholder" style="display:none;">🛍️</span>
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" class="admin-thumb-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <span class="admin-thumb-placeholder" style="display:none;">🛍️</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="color: #a78bfa; font-weight: 600;">#{{ product.id }}</td>
+                    <td style="text-align: left; font-weight: 600; color: #ffffff;">
+                        <div>{{ product.name }}</div>
+                        <small style="color: #94a3b8; font-weight: 400; display: block; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ product.description }}
+                        </small>
+                    </td>
+                    <td>
+                        <span class="category-pill">
+                            {{ product.category }}
+                        </span>
+                    </td>
+                    <td style="color: #38bdf8; font-weight: 700;">
+                        ₹{{ "%.2f"|format(product.price) }}
+                    </td>
+                    <td>
+                        {% if product.stock > 3 %}
+                            <span class="stock-badge in-stock">
+                                ● In Stock ({{ product.stock }})
+                            </span>
+                        {% elif product.stock > 0 %}
+                            <span class="stock-badge low-stock">
+                                ⚠ Low Stock ({{ product.stock }})
+                            </span>
+                        {% else %}
+                            <span class="stock-badge out-of-stock">
+                                ✕ Out of Stock (0)
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('edit_product', id=product.id) }}" class="edit-btn">
+                            ✏️ Edit
+                        </a>
+                    </td>
+                    <td>
+                        <button type="button" class="delete-btn" onclick="openDeleteModal({{ product.id }}, '{{ product.name|replace("'", "\\'") }}')">
+                            🗑️ Delete
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr id="emptyTableRow">
+                    <td colspan="8" style="text-align: center; color: #94a3b8; padding: 40px;">
+                        <div style="font-size: 36px; margin-bottom: 12px;">📦</div>
+                        <p style="font-size: 16px; font-weight: 600; color: #ffffff;">No products in the catalog yet.</p>
+                        <a href="{{ url_for('admin_add_product') }}" class="add-product-btn" style="margin-top: 15px; display: inline-flex;">
+                            ➕ Add Your First Product
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr id="noFilterMatchRow" style="display: none;">
+                    <td colspan="8" style="text-align: center; color: #94a3b8; padding: 35px;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">🔍</div>
+                        <p style="font-size: 15px; color: #cbd5e1;">No products found matching your search query.</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="admin-modal-overlay" id="deleteModalOverlay">
+    <div class="admin-modal-content">
+        <div class="admin-modal-icon">⚠️</div>
+        <h3 class="admin-modal-title">Delete Product</h3>
+        <p class="admin-modal-desc">
+            Are you sure you want to delete <strong id="deleteProductName" style="color: #ffffff;"></strong>?
+            <br>
+            <span style="font-size: 13px; color: #94a3b8; display: block; margin-top: 6px;">
+                This action cannot be undone. Historical order items will remain safely preserved.
+            </span>
+        </p>
+        <div class="admin-modal-actions">
+            <button type="button" class="modal-cancel-btn" onclick="closeDeleteModal()">
+                Cancel
+            </button>
+            <form id="deleteProductForm" method="POST" action="" style="display: inline; margin: 0; padding: 0; background: none; border: none; box-shadow: none;">
+                <button type="submit" class="modal-confirm-delete-btn">
+                    Yes, Delete Product
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Live Search & Category Filtering
+    const searchInput = document.getElementById('productSearchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const rows = document.querySelectorAll('.product-row');
+    const noMatchRow = document.getElementById('noFilterMatchRow');
+
+    function filterTable() {
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const selectedCat = categoryFilter ? categoryFilter.value.trim().toLowerCase() : '';
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name') || '';
+            const category = row.getAttribute('data-category') || '';
+            const id = row.getAttribute('data-id') || '';
+
+            const matchesQuery = !query || name.includes(query) || category.includes(query) || id.includes(query);
+            const matchesCat = !selectedCat || category === selectedCat;
+
+            if (matchesQuery && matchesCat) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (noMatchRow) {
+            noMatchRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterTable);
+    }
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', filterTable);
+    }
+
+    // Modal Handling
+    const deleteModal = document.getElementById('deleteModalOverlay');
+    const deleteForm = document.getElementById('deleteProductForm');
+    const deleteNameSpan = document.getElementById('deleteProductName');
+
+    function openDeleteModal(productId, productName) {
+        if (deleteNameSpan) deleteNameSpan.textContent = productName;
+        if (deleteForm) deleteForm.action = `/admin/product/${productId}/delete`;
+        if (deleteModal) deleteModal.classList.add('active');
+    }
+
+    function closeDeleteModal() {
+        if (deleteModal) deleteModal.classList.remove('active');
+    }
+
+    // Close on escape or outside click
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDeleteModal();
+    });
+    if (deleteModal) {
+        deleteModal.addEventListener('click', function(e) {
+            if (e.target === deleteModal) closeDeleteModal();
+        });
+    }
+</script>
+{% endblock %}

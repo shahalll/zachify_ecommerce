@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add New Product - Zachify Admin
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+
+    <div class="admin-header">
+        <div>
+            <p class="admin-kicker">INVENTORY MANAGEMENT</p>
+            <h1>Add New Product</h1>
+            <p class="admin-subtitle">
+                Fill in the details below to add a new product to the catalog.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('admin_products') }}" class="quick-btn" style="display: inline-flex; align-items: center; gap: 8px;">
+                ← Back to Products
+            </a>
+            <a href="{{ url_for('admin') }}" class="quick-btn" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+                ← Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="quick-actions">
+        <a href="{{ url_for('admin_products') }}" class="quick-btn">
+            📦 View All Products
+        </a>
+        <a href="{{ url_for('admin_orders') }}" class="quick-btn">
+            🧾 Orders
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn">
+            👥 Users
+        </a>
+    </div>
+
+    <div class="admin-form-card">
+        <form method="POST" action="{{ url_for('admin_add_product') }}">
+
+            <div class="product-form-grid">
+
+                <!-- Product Name -->
+                <div>
+                    <label class="form-field-label">Product Name *</label>
+                    <input
+                        type="text"
+                        name="name"
+                        value="{{ form_data.name if form_data else '' }}"
+                        placeholder="e.g. Apple MacBook Pro M3"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label class="form-field-label">Category *</label>
+                    <input
+                        type="text"
+                        name="category"
+                        list="categoryList"
+                        value="{{ form_data.category if form_data else '' }}"
+                        placeholder="e.g. electronics, fashion, audio..."
+                        required
+                    >
+                    <datalist id="categoryList">
+                        {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat|capitalize }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <!-- Price -->
+                <div>
+                    <label class="form-field-label">Price (₹) *</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        name="price"
+                        value="{{ form_data.price if form_data else '' }}"
+                        placeholder="e.g. 74999.00"
+                        required
+                    >
+                </div>
+
+                <!-- Stock -->
+                <div>
+                    <label class="form-field-label">Stock Quantity *</label>
+                    <input
+                        type="number"
+                        min="0"
+                        name="stock"
+                        value="{{ form_data.stock if form_data else '10' }}"
+                        placeholder="e.g. 15"
+                        required
+                    >
+                </div>
+
+                <!-- Image Filename or URL -->
+                <div class="form-group-full">
+                    <label class="form-field-label">Product Image (Filename in static/images or full URL) *</label>
+                    <input
+                        type="text"
+                        name="image"
+                        id="productImageInput"
+                        value="{{ form_data.image if form_data else '' }}"
+                        placeholder="e.g. laptop.jpg or https://example.com/item.png"
+                        required
+                    >
+                    <div class="image-preview-box" id="imagePreviewContainer" style="display: none;">
+                        <img id="imagePreviewImg" class="preview-thumb" src="" alt="Image Preview">
+                        <div>
+                            <span style="font-size: 13px; color: #a78bfa; font-weight: 600;">Image Preview</span>
+                            <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Ensure image appears crisp and centered.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group-full">
+                    <label class="form-field-label">Product Description *</label>
+                    <textarea
+                        name="description"
+                        rows="5"
+                        placeholder="Detailed description highlighting key features, specs, warranty, etc."
+                        required
+                    >{{ form_data.description if form_data else '' }}</textarea>
+                </div>
+
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap;">
+                <button type="submit" class="quick-btn add-btn" style="font-size: 16px; padding: 14px 28px;">
+                    ➕ Save Product
+                </button>
+                <a href="{{ url_for('admin_products') }}" class="quick-btn" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); display: inline-flex; align-items: center;">
+                    Cancel
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<script>
+    const imageInput = document.getElementById('productImageInput');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('imagePreviewImg');
+
+    function updatePreview() {
+        const val = imageInput ? imageInput.value.trim() : '';
+        if (!val) {
+            previewContainer.style.display = 'none';
+            return;
+        }
+
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+            previewImg.src = val;
+        } else {
+            previewImg.src = `/static/images/${val}`;
+        }
+        previewContainer.style.display = 'flex';
+    }
+
+    if (imageInput) {
+        imageInput.addEventListener('input', updatePreview);
+        if (imageInput.value.trim()) {
+            updatePreview();
+        }
+    }
+</script>
+{% endblock %}

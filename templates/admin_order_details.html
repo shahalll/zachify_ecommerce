@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}
+Order #{{ order.order_number }} Details - Zachify Admin
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div>
+            <p class="admin-kicker">ORDER MANAGEMENT</p>
+            <h1>Order #{{ order.order_number }}</h1>
+            <p class="admin-subtitle">
+                Placed on {{ order.created_at.strftime("%d %b %Y, %I:%M %p") }} &bull; Current Status: 
+                <span class="status-badge {{ order.status|lower }}" style="padding: 4px 12px; font-size: 13px;">
+                    {{ order.status }}
+                </span>
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('admin_orders') }}" class="quick-btn" style="display: inline-flex; align-items: center; gap: 8px;">
+                ← Back to Orders
+            </a>
+            <a href="{{ url_for('admin') }}" class="quick-btn" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+                ← Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="quick-actions">
+        <a href="{{ url_for('admin_orders') }}" class="quick-btn">
+            🧾 All Customer Orders
+        </a>
+        <a href="{{ url_for('admin_products') }}" class="quick-btn">
+            📦 Products
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn">
+            👥 Users
+        </a>
+    </div>
+
+    <!-- Main Grid: Items & Info on Left, Status & Summary on Right -->
+    <div class="admin-order-grid">
+
+        <!-- Left Column: Customer Details & Line Items -->
+        <div>
+
+            <!-- Customer Information Card -->
+            <div class="admin-info-card">
+                <div class="admin-info-card-header">
+                    <h3>👤 Customer Information</h3>
+                    <span class="status-badge" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3);">
+                        Customer ID: #{{ order.user_id }}
+                    </span>
+                </div>
+
+                <div class="admin-info-list">
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Customer Name</span>
+                        <span class="admin-info-val">{{ order.user.username if order.user else 'Guest/Deleted User' }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Customer Email</span>
+                        <span class="admin-info-val" style="color: #cbd5e1;">{{ order.user.email if order.user else 'N/A' }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Account Created</span>
+                        <span class="admin-info-val" style="color: #94a3b8; font-size: 14px;">
+                            {{ order.user.created_at.strftime("%d %b %Y") if order.user and order.user.created_at else 'N/A' }}
+                        </span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Account Role</span>
+                        <span class="admin-info-val">
+                            {% if order.user and order.user.is_admin %}
+                                <span style="color: #a78bfa; font-weight: 700;">🛡️ Administrator</span>
+                            {% else %}
+                                <span style="color: #94a3b8;">Customer</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ordered Items Card -->
+            <div class="admin-info-card">
+                <div class="admin-info-card-header">
+                    <h3>📦 Ordered Products ({{ order.items|length }} {% if order.items|length == 1 %}item{% else %}items{% endif %})</h3>
+                </div>
+
+                <table class="product-table" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Image</th>
+                            <th>Product</th>
+                            <th>Unit Price</th>
+                            <th style="width: 80px;">Qty</th>
+                            <th style="text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.items %}
+                        <tr>
+                            <td>
+                                <div class="admin-product-thumb">
+                                    {% if item.product_image.startswith('http://') or item.product_image.startswith('https://') %}
+                                        <img src="{{ item.product_image }}" alt="{{ item.product_name }}" class="admin-thumb-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        <span class="admin-thumb-placeholder" style="display:none;">🛍️</span>
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='images/' + item.product_image) }}" alt="{{ item.product_name }}" class="admin-thumb-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        <span class="admin-thumb-placeholder" style="display:none;">🛍️</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td style="text-align: left;">
+                                <div style="font-weight: 600; color: #ffffff;">{{ item.product_name }}</div>
+                                {% if item.product_id %}
+                                    <small style="color: #a78bfa;">Catalog Ref: #{{ item.product_id }}</small>
+                                {% else %}
+                                    <small style="color: #94a3b8;">(Archived Catalog Item)</small>
+                                {% endif %}
+                            </td>
+                            <td style="color: #cbd5e1;">
+                                ₹{{ "%.2f"|format(item.unit_price) }}
+                            </td>
+                            <td style="font-weight: 600; color: #ffffff;">
+                                &times; {{ item.quantity }}
+                            </td>
+                            <td style="text-align: right; color: #38bdf8; font-weight: 700;">
+                                ₹{{ "%.2f"|format(item.total_price) }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #94a3b8; padding: 25px;">
+                                No item records found for this order.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Status Management & Financial Summary -->
+        <div>
+
+            <!-- Order Status Management Card -->
+            <div class="admin-info-card">
+                <div class="admin-info-card-header">
+                    <h3>⚡ Manage Status</h3>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                    <span class="admin-info-label">Current Fulfillment Status</span>
+                    <div style="margin-top: 8px;">
+                        <span class="status-badge {{ order.status|lower }}" style="font-size: 15px; padding: 8px 16px;">
+                            {{ order.status }}
+                        </span>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('admin_order_details', order_id=order.id) }}">
+                    <label class="form-field-label">Update Order Status</label>
+                    <select name="status" class="status-select-control" required>
+                        {% for status_opt in status_options %}
+                        <option value="{{ status_opt }}" {% if order.status == status_opt %}selected{% endif %}>
+                            {{ status_opt }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit" class="update-status-btn">
+                        💾 Update Status
+                    </button>
+                </form>
+            </div>
+
+            <!-- Order Summary Card -->
+            <div class="admin-info-card">
+                <div class="admin-info-card-header">
+                    <h3>🧾 Order Summary</h3>
+                </div>
+
+                <div class="admin-info-item" style="margin-bottom: 12px;">
+                    <span class="admin-info-label">Order Number</span>
+                    <span class="admin-info-val" style="color: #a78bfa; font-family: monospace; font-size: 16px;">
+                        {{ order.order_number }}
+                    </span>
+                </div>
+
+                <div class="admin-info-item" style="margin-bottom: 12px;">
+                    <span class="admin-info-label">Date & Time</span>
+                    <span class="admin-info-val" style="font-size: 14px; color: #cbd5e1;">
+                        {{ order.created_at.strftime("%d %b %Y, %I:%M %p") }}
+                    </span>
+                </div>
+
+                <div class="admin-order-summary-box">
+                    <div class="summary-row">
+                        <span>Total Items</span>
+                        <strong style="color: #ffffff;">
+                            {{ order.items|sum(attribute='quantity') }}
+                        </strong>
+                    </div>
+
+                    <div class="summary-row total-row">
+                        <span>Total Paid</span>
+                        <span class="summary-total-val">
+                            ₹{{ "%.2f"|format(order.total_amount) }}
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <a href="{{ url_for('admin_orders') }}" class="quick-btn" style="display: block; text-align: center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+                        ← Back to Orders List
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

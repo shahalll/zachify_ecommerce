@@ -14,17 +14,64 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
+DEFAULT_ADMIN_EMAILS = {
+    "mhdshahal3182005@gmail.com",
+}
+
+
+def ensure_default_admins():
+    """Ensures designated administrative accounts always exist and retain is_admin=True."""
+    try:
+        updated = False
+        default_admin_accounts = [
+            ("shahal", "mhdshahal3182005@gmail.com", "shahal123"),
+        ]
+        for uname, uemail, upass in default_admin_accounts:
+            user = User.query.filter(User.email.ilike(uemail)).first()
+            if not user:
+                user = User(
+                    username=uname,
+                    email=uemail,
+                    password=generate_password_hash(upass),
+                    is_admin=True,
+                )
+                db.session.add(user)
+                updated = True
+            elif not user.is_admin:
+                user.is_admin = True
+                updated = True
+
+        for admin_email in DEFAULT_ADMIN_EMAILS:
+            user = User.query.filter(User.email.ilike(admin_email)).first()
+            if user and not user.is_admin:
+                user.is_admin = True
+                updated = True
+
+        if updated:
+            db.session.commit()
+    except Exception as e:
+        print(f"Admin sync notice: {e}")
+
+
 
 def get_current_user():
+    user = None
     user_id = session.get("user_id")
     if user_id:
-        return User.query.get(user_id)
+        user = User.query.get(user_id)
+    else:
+        username = session.get("username")
+        if username:
+            user = User.query.filter_by(username=username).first()
 
-    username = session.get("username")
-    if username:
-        return User.query.filter_by(username=username).first()
+    if user and user.email and user.email.lower() in {e.lower() for e in DEFAULT_ADMIN_EMAILS} and not user.is_admin:
+        user.is_admin = True
+        try:
+            db.session.commit()
+        except Exception:
+            pass
 
-    return None
+    return user
 
 
 def admin_required(f):
@@ -50,8 +97,10 @@ def migrate_sqlite_schema():
                 with db.engine.connect() as conn:
                     conn.execute(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0;"))
                     conn.commit()
+        ensure_default_admins()
     except Exception as e:
         print(f"Migration notice: {e}")
+
 
 
 def get_user_wishlist_ids(user):
@@ -152,7 +201,7 @@ class Order(db.Model):
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=True)
     product_name = db.Column(db.String(200), nullable=False)
     product_image = db.Column(db.String(200), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
@@ -409,20 +458,43 @@ def login():
 
     if request.method == "POST":
 
-        email = request.form.get("email", "").strip()
+        identifier = request.form.get("email", "").strip()
         password = request.form.get("password", "")
 
-        user = User.query.filter(User.email.ilike(email)).first()
+        # Allow login by Email OR Username (case-insensitive)
+        user = User.query.filter(
+            or_(User.email.ilike(identifier), User.username.ilike(identifier))
+        ).first()
 
-        if user and check_password_hash(user.password, password):
+        is_valid_password = False
+        if user and password:
+            try:
+                if check_password_hash(user.password, password) or check_password_hash(user.password, password.strip()):
+                    is_valid_password = True
+            except Exception:
+                pass
+
+            # Fallback for plain-text legacy passwords
+            if not is_valid_password and (user.password == password or user.password == password.strip()):
+                is_valid_password = True
+                user.password = generate_password_hash(password)
+                db.session.commit()
+
+        if user and is_valid_password:
+            if user.email and user.email.lower() in {e.lower() for e in DEFAULT_ADMIN_EMAILS} and not user.is_admin:
+                user.is_admin = True
+                db.session.commit()
+
             session["username"] = user.username
             session["user_id"] = user.id
+            flash(f"Welcome back, {user.username}!", "success")
             return redirect(url_for("home"))
         else:
-            flash("Invalid Email or Password!", "danger")
+            flash("Invalid Email/Username or Password! If you don't have an account yet, please register first.", "danger")
             return render_template("login.html")
 
     return render_template("login.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -445,10 +517,12 @@ def register():
            flash("Email already registered.", "danger")
            return redirect(url_for("register"))
 
+        is_admin_user = email.lower() in {e.lower() for e in DEFAULT_ADMIN_EMAILS}
         new_user = User(
             username=username,
             email=email,
-            password=hashed_password
+            password=hashed_password,
+            is_admin=is_admin_user
         )
 
         db.session.add(new_user)
@@ -515,28 +589,40 @@ def remove_from_wishlist(product_id):
 def admin():
 
     if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        category = request.form.get("category", "").strip()
+        image = request.form.get("image", "").strip()
+        description = request.form.get("description", "").strip()
+        price_raw = request.form.get("price", "").strip()
+        stock_raw = request.form.get("stock", "").strip()
 
-        name = request.form["name"]
-        price = float(request.form["price"])
-        image = request.form["image"]
-        category = request.form["category"]
-        description = request.form["description"]
-        stock = int(request.form["stock"])
-
-        new_product = Product(
-            name=name,
-            price=price,
-            image=image,
-            category=category,
-            description=description,
-            stock=stock
-        )
-
-        db.session.add(new_product)
-        db.session.commit()
+        if not name or not category or not image or not description:
+            flash("Please fill in all required product fields.", "danger")
+        else:
+            try:
+                price = float(price_raw)
+                stock = int(stock_raw)
+                if price <= 0:
+                    flash("Price must be greater than 0.", "danger")
+                elif stock < 0:
+                    flash("Stock quantity cannot be negative.", "danger")
+                else:
+                    new_product = Product(
+                        name=name,
+                        price=price,
+                        image=image,
+                        category=category,
+                        description=description,
+                        stock=stock,
+                    )
+                    db.session.add(new_product)
+                    db.session.commit()
+                    flash(f"Product '{new_product.name}' added successfully!", "success")
+            except ValueError:
+                flash("Invalid price or stock value entered.", "danger")
 
     # Fetch all products
-    products = Product.query.all()
+    products = Product.query.order_by(Product.id.desc()).all()
 
     # Dashboard statistics
     total_products = Product.query.count()
@@ -544,8 +630,8 @@ def admin():
     total_orders = Order.query.count()
 
     total_revenue = db.session.query(
-    func.sum(Order.total_amount)
-).scalar() or 0
+        func.sum(Order.total_amount)
+    ).scalar() or 0
 
     return render_template(
         "admin.html",
@@ -555,16 +641,146 @@ def admin():
         total_orders=total_orders,
         total_revenue=total_revenue
     )
+
+
+@app.route("/admin/products")
+@admin_required
+def admin_products():
+    search_query = request.args.get("q", "").strip()
+    selected_category = request.args.get("category", "").strip()
+
+    query = Product.query
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                Product.name.ilike(search_term),
+                Product.category.ilike(search_term),
+                Product.description.ilike(search_term),
+            )
+        )
+    if selected_category:
+        query = query.filter(Product.category.ilike(selected_category))
+
+    products = query.order_by(Product.id.desc()).all()
+
+    all_products = Product.query.all()
+    total_products = len(all_products)
+    in_stock_count = sum(1 for p in all_products if p.stock > 3)
+    low_stock_count = sum(1 for p in all_products if 0 < p.stock <= 3)
+    out_of_stock_count = sum(1 for p in all_products if p.stock <= 0)
+    categories = sorted({p.category for p in all_products if p.category})
+
+    return render_template(
+        "admin_products.html",
+        products=products,
+        total_products=total_products,
+        in_stock_count=in_stock_count,
+        low_stock_count=low_stock_count,
+        out_of_stock_count=out_of_stock_count,
+        categories=categories,
+        search_query=search_query,
+        selected_category=selected_category,
+    )
+
+
+@app.route("/admin/product/add", methods=["GET", "POST"])
+@app.route("/admin/products/add", methods=["GET", "POST"])
+@admin_required
+def admin_add_product():
+    all_products = Product.query.all()
+    categories = sorted({p.category for p in all_products if p.category})
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        category = request.form.get("category", "").strip()
+        image = request.form.get("image", "").strip()
+        description = request.form.get("description", "").strip()
+        price_raw = request.form.get("price", "").strip()
+        stock_raw = request.form.get("stock", "").strip()
+
+        if not name or not category or not image or not description:
+            flash("Please fill in all required product fields.", "danger")
+            return render_template("admin_add_product.html", categories=categories, form_data=request.form)
+
+        try:
+            price = float(price_raw)
+            if price <= 0:
+                flash("Price must be greater than 0.", "danger")
+                return render_template("admin_add_product.html", categories=categories, form_data=request.form)
+        except ValueError:
+            flash("Please enter a valid numeric price.", "danger")
+            return render_template("admin_add_product.html", categories=categories, form_data=request.form)
+
+        try:
+            stock = int(stock_raw)
+            if stock < 0:
+                flash("Stock quantity cannot be negative.", "danger")
+                return render_template("admin_add_product.html", categories=categories, form_data=request.form)
+        except ValueError:
+            flash("Please enter a valid numeric stock quantity.", "danger")
+            return render_template("admin_add_product.html", categories=categories, form_data=request.form)
+
+        new_product = Product(
+            name=name,
+            price=price,
+            image=image,
+            category=category,
+            description=description,
+            stock=stock,
+        )
+
+        db.session.add(new_product)
+        db.session.commit()
+
+        flash(f"Product '{new_product.name}' added successfully!", "success")
+        return redirect(url_for("admin_products"))
+
+    return render_template("admin_add_product.html", categories=categories, form_data={})
+
+
 @app.route("/admin/orders")
 @admin_required
 def admin_orders():
-
     orders = Order.query.order_by(Order.created_at.desc()).all()
-
     return render_template(
         "admin_orders.html",
         orders=orders
     )
+
+
+@app.route("/admin/order/<int:order_id>", methods=["GET", "POST"])
+@app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
+@admin_required
+def admin_order_details(order_id):
+    order = Order.query.get_or_404(order_id)
+    allowed_statuses = [
+        "Processing",
+        "Packed",
+        "Confirmed",
+        "Shipped",
+        "Delivered",
+        "Cancelled",
+        "Pending",
+    ]
+
+    if request.method == "POST":
+        new_status = request.form.get("status", "").strip()
+        if new_status in allowed_statuses:
+            order.status = new_status
+            db.session.commit()
+            flash(f"Order #{order.order_number} status updated to '{new_status}'!", "success")
+            return redirect(url_for("admin_order_details", order_id=order.id))
+        else:
+            flash("Invalid status selected.", "danger")
+
+    return render_template(
+        "admin_order_details.html",
+        order=order,
+        status_options=allowed_statuses,
+    )
+
+
 @app.route("/admin/order/<int:order_id>/status")
 @admin_required
 def change_order_status(order_id):
@@ -589,6 +805,7 @@ def change_order_status(order_id):
             db.session.commit()
 
     return redirect(url_for("admin_orders"))
+
 
 
 @app.route("/admin/users")
@@ -820,37 +1037,77 @@ def decrease_quantity(product_id):
     session["cart"] = cart
 
     return redirect("/cart")
-@app.route("/delete_product/<int:id>")
+@app.route("/admin/product/<int:id>/delete", methods=["GET", "POST"])
+@app.route("/delete_product/<int:id>", methods=["GET", "POST"])
 @admin_required
 def delete_product(id):
-
     product = Product.query.get_or_404(id)
+    product_name = product.name
+
+    # Safely detach product from historical order items so orders & stats remain valid
+    OrderItem.query.filter_by(product_id=id).update({"product_id": None})
+
+    # Remove any wishlist entries referencing this product
+    Wishlist.query.filter_by(product_id=id).delete()
 
     db.session.delete(product)
-
     db.session.commit()
 
-    return redirect("/admin")
+    flash(f"Product '{product_name}' was deleted successfully.", "success")
+    return redirect(request.referrer or url_for("admin_products"))
+
+
+@app.route("/admin/product/<int:id>/edit", methods=["GET", "POST"])
 @app.route("/edit_product/<int:id>", methods=["GET", "POST"])
 @admin_required
 def edit_product(id):
-
     product = Product.query.get_or_404(id)
+    all_products = Product.query.all()
+    categories = sorted({p.category for p in all_products if p.category})
 
     if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        category = request.form.get("category", "").strip()
+        image = request.form.get("image", "").strip()
+        description = request.form.get("description", "").strip()
+        price_raw = request.form.get("price", "").strip()
+        stock_raw = request.form.get("stock", "").strip()
 
-        product.name = request.form["name"]
-        product.price = float(request.form["price"])
-        product.image = request.form["image"]
-        product.category = request.form["category"]
-        product.description = request.form["description"]
-        product.stock = int(request.form["stock"])
+        if not name or not category or not image or not description:
+            flash("Please fill in all required product fields.", "danger")
+            return render_template("edit_product.html", product=product, categories=categories)
+
+        try:
+            price = float(price_raw)
+            if price <= 0:
+                flash("Price must be greater than 0.", "danger")
+                return render_template("edit_product.html", product=product, categories=categories)
+        except ValueError:
+            flash("Please enter a valid numeric price.", "danger")
+            return render_template("edit_product.html", product=product, categories=categories)
+
+        try:
+            stock = int(stock_raw)
+            if stock < 0:
+                flash("Stock quantity cannot be negative.", "danger")
+                return render_template("edit_product.html", product=product, categories=categories)
+        except ValueError:
+            flash("Please enter a valid numeric stock quantity.", "danger")
+            return render_template("edit_product.html", product=product, categories=categories)
+
+        product.name = name
+        product.price = price
+        product.image = image
+        product.category = category
+        product.description = description
+        product.stock = stock
 
         db.session.commit()
+        flash(f"Product '{product.name}' updated successfully!", "success")
+        return redirect(url_for("admin_products"))
 
-        return redirect("/admin")
+    return render_template("edit_product.html", product=product, categories=categories)
 
-    return render_template("edit_product.html", product=product)
 @app.route("/clear_cart")
 def clear_cart():
     session.clear()
@@ -890,5 +1147,6 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         migrate_sqlite_schema()
+        ensure_default_admins()
         seed_default_products()
     app.run(debug=True)

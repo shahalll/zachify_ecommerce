@@ -1,203 +1,268 @@
 {% extends "base.html" %}
 
 {% block title %}
-Admin Dashboard
+Admin Dashboard - Zachify
 {% endblock %}
 
 {% block content %}
 <div class="admin-container">
 
     <div class="admin-header">
-
         <div>
-
-            <p class="admin-kicker">
-                ZACHIFY ADMIN
-            </p>
-
+            <p class="admin-kicker">ZACHIFY ADMIN</p>
             <h1>Store Dashboard</h1>
-
             <p class="admin-subtitle">
                 Manage products, orders, customers and revenue from one place.
             </p>
-
         </div>
 
         <div class="admin-profile">
-
             <div class="admin-avatar">
                 A
             </div>
+        </div>
+    </div>
 
+    <!-- Summary Statistics -->
+    <div class="dashboard-cards">
+        <div class="dashboard-card">
+            <div class="card-icon">📦</div>
+            <h2>{{ total_products }}</h2>
+            <p>Total Products</p>
         </div>
 
-    </div>
-<div class="dashboard-cards">
+        <div class="dashboard-card">
+            <div class="card-icon">👥</div>
+            <h2>{{ total_users }}</h2>
+            <p>Customers</p>
+        </div>
 
-    <div class="dashboard-card">
-        <div class="card-icon">📦</div>
+        <div class="dashboard-card">
+            <div class="card-icon">🧾</div>
+            <h2>{{ total_orders }}</h2>
+            <p>Orders</p>
+        </div>
 
-        <h2>{{ total_products }}</h2>
-
-        <p>Total Products</p>
-    </div>
-
-    <div class="dashboard-card">
-        <div class="card-icon">👥</div>
-
-        <h2>{{ total_users }}</h2>
-
-        <p>Customers</p>
-    </div>
-
-    <div class="dashboard-card">
-        <div class="card-icon">🧾</div>
-
-        <h2>{{ total_orders }}</h2>
-
-        <p>Orders</p>
+        <div class="dashboard-card">
+            <div class="card-icon">💰</div>
+            <h2>₹{{ "%.0f"|format(total_revenue) }}</h2>
+            <p>Total Revenue</p>
+        </div>
     </div>
 
-    <div class="dashboard-card">
-        <div class="card-icon">💰</div>
+    <!-- Quick Navigation Actions -->
+    <div class="quick-actions">
+        <a href="{{ url_for('admin_products') }}" class="quick-btn">
+            📦 Products List
+        </a>
+        <a href="{{ url_for('admin_add_product') }}" class="quick-btn add-btn">
+            ➕ Add Product
+        </a>
+        <a href="{{ url_for('admin_orders') }}" class="quick-btn">
+            🧾 Orders
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn">
+            👥 Users
+        </a>
+    </div>
 
-        <h2>₹{{ "%.0f"|format(total_revenue) }}</h2>
+    <!-- Add Product Quick Card -->
+    <div class="admin-form-card" id="add-product">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+            <h2>Quick Add Product</h2>
+            <a href="{{ url_for('admin_add_product') }}" class="quick-btn add-btn" style="padding: 8px 16px; font-size: 13px;">
+                Open Full Form ↗
+            </a>
+        </div>
 
-        <p>Total Revenue</p>
+        <form action="{{ url_for('admin') }}" method="POST">
+            <div class="product-form-grid">
+                <div>
+                    <label class="form-field-label">Product Name</label>
+                    <input type="text" name="name" placeholder="Product Name" required>
+                </div>
+                <div>
+                    <label class="form-field-label">Category</label>
+                    <input type="text" name="category" placeholder="Category" required>
+                </div>
+                <div>
+                    <label class="form-field-label">Price (₹)</label>
+                    <input type="number" step="0.01" min="0.01" name="price" placeholder="Price (e.g. 1999.00)" required>
+                </div>
+                <div>
+                    <label class="form-field-label">Stock Quantity</label>
+                    <input type="number" min="0" name="stock" placeholder="Stock (e.g. 10)" required>
+                </div>
+                <div class="form-group-full">
+                    <label class="form-field-label">Image Filename / URL</label>
+                    <input type="text" name="image" placeholder="e.g. laptop.jpg or image URL" required>
+                </div>
+                <div class="form-group-full">
+                    <label class="form-field-label">Description</label>
+                    <textarea name="description" placeholder="Product Description" rows="4" required></textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="quick-btn add-btn" style="font-size: 15px; margin-top: 15px;">
+                ➕ Add Product
+            </button>
+        </form>
+    </div>
+
+    <!-- Inventory Section -->
+    <div class="section-header" id="product-list">
+        <div>
+            <p class="section-kicker">INVENTORY</p>
+            <h2>Product Catalog ({{ products|length }})</h2>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input
+                type="text"
+                id="dashProductSearch"
+                placeholder="Filter products..."
+                class="inventory-search"
+            >
+            <a href="{{ url_for('admin_products') }}" class="quick-btn" style="padding: 12px 18px; font-size: 14px;">
+                Manage All Products →
+            </a>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <table class="product-table" id="dashboardProductTable">
+            <thead>
+                <tr>
+                    <th style="width: 70px;">Image</th>
+                    <th style="width: 50px;">ID</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th style="width: 90px;">Edit</th>
+                    <th style="width: 90px;">Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="dash-prod-row" data-search="{{ product.name|lower }} {{ product.category|lower }} {{ product.id }}">
+                    <td>
+                        <div class="admin-product-thumb">
+                            {% if product.image.startswith('http://') or product.image.startswith('https://') %}
+                                <img src="{{ product.image }}" alt="{{ product.name }}" class="admin-thumb-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <span class="admin-thumb-placeholder" style="display:none;">🛍️</span>
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" class="admin-thumb-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <span class="admin-thumb-placeholder" style="display:none;">🛍️</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="color: #a78bfa; font-weight: 600;">#{{ product.id }}</td>
+                    <td style="text-align: left; font-weight: 600; color: #ffffff;">
+                        {{ product.name }}
+                    </td>
+                    <td>
+                        <span class="category-pill">{{ product.category }}</span>
+                    </td>
+                    <td style="color: #38bdf8; font-weight: 700;">
+                        ₹{{ "%.2f"|format(product.price) }}
+                    </td>
+                    <td>
+                        {% if product.stock > 3 %}
+                            <span class="stock-badge in-stock">{{ product.stock }} in stock</span>
+                        {% elif product.stock > 0 %}
+                            <span class="stock-badge low-stock">{{ product.stock }} left</span>
+                        {% else %}
+                            <span class="stock-badge out-of-stock">Out of stock</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('edit_product', id=product.id) }}" class="edit-btn">
+                            Edit
+                        </a>
+                    </td>
+                    <td>
+                        <button type="button" class="delete-btn" onclick="openDeleteModal({{ product.id }}, '{{ product.name|replace("'", "\\'") }}')">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #94a3b8; padding: 30px;">
+                        No products found in catalog.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
 </div>
-<div class="quick-actions">
 
-    <a href="#add-product" class="quick-btn">
-        ➕ Add Product
-    </a>
-
-    <a href="#product-list" class="quick-btn">
-        📦 Products
-    </a>
-
-    <a href="{{ url_for('admin_orders') }}" class="quick-btn">
-    🧾 Orders
-</a>
-
-    <a href="{{ url_for('admin_users') }}" class="quick-btn">
-        👥 Users
-    </a>
-
-</div>
-    <div class="admin-form-card">
-
-    <h2 id="add-product">Add New Product</h2>
-
-    <form action="/admin" method="POST">
-
-        <input type="text" name="name" placeholder="Product Name" required>
-
-        <input type="number" step="0.01" name="price" placeholder="Price" required>
-
-        <input type="text" name="image" placeholder="Image Filename" required>
-
-        <input type="text" name="category" placeholder="Category" required>
-
-        <textarea
-            name="description"
-            placeholder="Product Description"
-            rows="5"
-            required></textarea>
-
-        <input type="number" name="stock" placeholder="Stock" required>
-
-        <button type="submit">
-            Add Product
-        </button>
-
-    </form>
-    </div>
-
-<div class="section-header">
-
-    <div>
-
-        <p class="section-kicker">
-            INVENTORY
+<!-- Delete Confirmation Modal -->
+<div class="admin-modal-overlay" id="deleteModalOverlay">
+    <div class="admin-modal-content">
+        <div class="admin-modal-icon">⚠️</div>
+        <h3 class="admin-modal-title">Delete Product</h3>
+        <p class="admin-modal-desc">
+            Are you sure you want to delete <strong id="deleteProductName" style="color: #ffffff;"></strong>?
+            <br>
+            <span style="font-size: 13px; color: #94a3b8; display: block; margin-top: 6px;">
+                This action cannot be undone. Historical order items will remain safely preserved.
+            </span>
         </p>
-
-        <h2>
-            Product Inventory
-        </h2>
-
+        <div class="admin-modal-actions">
+            <button type="button" class="modal-cancel-btn" onclick="closeDeleteModal()">
+                Cancel
+            </button>
+            <form id="deleteProductForm" method="POST" action="" style="display: inline; margin: 0; padding: 0; background: none; border: none; box-shadow: none;">
+                <button type="submit" class="modal-confirm-delete-btn">
+                    Yes, Delete Product
+                </button>
+            </form>
+        </div>
     </div>
-
-    <div>
-
-        <input
-            type="text"
-            placeholder="Search products..."
-            class="inventory-search"
-        >
-
-    </div>
-
 </div>
 
+<script>
+    // Live filter on dashboard table
+    const searchInput = document.getElementById('dashProductSearch');
+    const rows = document.querySelectorAll('.dash-prod-row');
 
-<div class="table-card">
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            rows.forEach(row => {
+                const text = row.getAttribute('data-search') || '';
+                row.style.display = (!query || text.includes(query)) ? '' : 'none';
+            });
+        });
+    }
 
-<table class="product-table">
+    // Modal Handling
+    const deleteModal = document.getElementById('deleteModalOverlay');
+    const deleteForm = document.getElementById('deleteProductForm');
+    const deleteNameSpan = document.getElementById('deleteProductName');
 
-    <tr>
+    function openDeleteModal(productId, productName) {
+        if (deleteNameSpan) deleteNameSpan.textContent = productName;
+        if (deleteForm) deleteForm.action = `/admin/product/${productId}/delete`;
+        if (deleteModal) deleteModal.classList.add('active');
+    }
 
-        <th>ID</th>
-        <th>Name</th>
-        <th>Price</th>
-        <th>Category</th>
-        <th>Stock</th>
-        <th>Edit</th>
-        <th>Delete</th>
+    function closeDeleteModal() {
+        if (deleteModal) deleteModal.classList.remove('active');
+    }
 
-    </tr>
-
-    {% for product in products %}
-
-    <tr>
-
-        <td>{{ product.id }}</td>
-
-        <td>{{ product.name }}</td>
-
-        <td>₹{{ product.price }}</td>
-
-        <td>{{ product.category }}</td>
-
-        <td>{{ product.stock }}</td>
-
-        <td>
-
-            <a href="/edit_product/{{ product.id }}" class="edit-btn">
-
-                Edit
-
-            </a>
-
-        </td>
-
-        <td>
-
-            <a href="/delete_product/{{ product.id }}" class="delete-btn">
-
-                Delete
-
-            </a>
-
-        </td>
-
-    </tr>
-
-    {% endfor %}
-
-</table>
-
-</div>
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDeleteModal();
+    });
+    if (deleteModal) {
+        deleteModal.addEventListener('click', function(e) {
+            if (e.target === deleteModal) closeDeleteModal();
+        });
+    }
+</script>
 
 {% endblock %}
