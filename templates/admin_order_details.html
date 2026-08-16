@@ -61,7 +61,15 @@ Order #{{ order.order_number }} Details - Zachify Admin
                 <div class="admin-info-list">
                     <div class="admin-info-item">
                         <span class="admin-info-label">Customer Name</span>
-                        <span class="admin-info-val">{{ order.user.username if order.user else 'Guest/Deleted User' }}</span>
+                        <span class="admin-info-val">
+                            {% if order.user %}
+                                <a href="{{ url_for('admin_user_details', user_id=order.user.id) }}" style="color: #c4b5fd; text-decoration: none; font-weight: 600;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                    {{ order.user.username }} ↗
+                                </a>
+                            {% else %}
+                                Guest/Deleted User
+                            {% endif %}
+                        </span>
                     </div>
 
                     <div class="admin-info-item">

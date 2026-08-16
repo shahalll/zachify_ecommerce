@@ -1,31 +1,30 @@
 {% extends "base.html" %}
 
 {% block title %}
-Admin Users - Zachify
+User Management - Zachify Admin
 {% endblock %}
 
 {% block content %}
 <div class="admin-container">
 
+    <!-- Admin Header -->
     <div class="admin-header">
         <div>
-            <p class="admin-kicker">
-                USER MANAGEMENT
-            </p>
+            <p class="admin-kicker">USER MANAGEMENT</p>
             <h1>Registered Users</h1>
             <p class="admin-subtitle">
-                View all registered customer accounts and administrative privileges.
+                Inspect registered customer accounts, manage administrator privileges, and monitor order activity.
             </p>
         </div>
 
-        <div style="display: flex; gap: 12px; align-items: center;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <a href="{{ url_for('admin') }}" class="quick-btn" style="display: inline-flex; align-items: center; gap: 8px;">
                 ← Back to Dashboard
             </a>
         </div>
     </div>
 
-    <!-- Summary Cards -->
+    <!-- Summary Metrics -->
     <div class="dashboard-cards">
         <div class="dashboard-card">
             <div class="card-icon">👥</div>
@@ -46,53 +45,154 @@ Admin Users - Zachify
         </div>
     </div>
 
-    <!-- Quick Navigation -->
+    <!-- Quick Navigation Actions -->
     <div class="quick-actions">
         <a href="{{ url_for('admin') }}" class="quick-btn">
             ← Dashboard
         </a>
+        <a href="{{ url_for('admin_products') }}" class="quick-btn">
+            📦 Products
+        </a>
         <a href="{{ url_for('admin_orders') }}" class="quick-btn">
             🧾 Orders
         </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn add-btn" style="box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);">
+            👥 Users
+        </a>
     </div>
 
-    <!-- Users Table -->
+    <!-- Filter & Search Toolbar -->
+    <div class="section-header" style="margin-top: 24px;">
+        <div>
+            <p class="section-kicker">USER DIRECTORY</p>
+            <h2>All Accounts ({{ users|length }})</h2>
+        </div>
+
+        <form method="GET" action="{{ url_for('admin_users') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <select name="role" class="inventory-search" style="width: 170px; cursor: pointer;" onchange="this.form.submit()">
+                <option value="" {% if not role_filter %}selected{% endif %}>All Roles</option>
+                <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>🛡️ Admins Only</option>
+                <option value="customer" {% if role_filter == 'customer' %}selected{% endif %}>🛍️ Customers Only</option>
+            </select>
+
+            <input
+                type="text"
+                name="q"
+                value="{{ search_query or '' }}"
+                placeholder="Search username or email..."
+                class="inventory-search"
+                style="min-width: 240px;"
+            >
+
+            <button type="submit" class="quick-btn add-btn" style="padding: 10px 18px; font-size: 14px;">
+                🔍 Search
+            </button>
+
+            {% if search_query or role_filter %}
+            <a href="{{ url_for('admin_users') }}" class="quick-btn" style="background: rgba(255, 255, 255, 0.08); font-size: 13px;">
+                Reset
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Users Table Card -->
     <div class="table-card">
         <table class="product-table">
             <thead>
                 <tr>
-                    <th>User ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Account Created</th>
-                    <th>Admin Status</th>
+                    <th style="width: 80px;">User ID</th>
+                    <th>User / Account</th>
+                    <th>Email Address</th>
+                    <th>Registered On</th>
+                    <th style="text-align: center;">Orders</th>
+                    <th style="text-align: center;">Admin Status</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for user in users %}
                 <tr>
-                    <td style="color: #a78bfa; font-weight: 600;">#{{ user.id }}</td>
-                    <td style="font-weight: 600; color: #ffffff;">{{ user.username }}</td>
-                    <td style="color: #cbd5e1;">{{ user.email }}</td>
-                    <td style="color: #94a3b8;">
+                    <td style="color: #a78bfa; font-weight: 700; font-family: monospace; font-size: 14px;">
+                        #{{ user.id }}
+                    </td>
+
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #4f46e5); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 14px; text-transform: uppercase; box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);">
+                                {{ user.username[0] if user.username else 'U' }}
+                            </div>
+                            <div>
+                                <a href="{{ url_for('admin_user_details', user_id=user.id) }}" style="font-weight: 600; color: #ffffff; text-decoration: none; display: block; transition: color 0.2s;" onmouseover="this.style.color='#c4b5fd'" onmouseout="this.style.color='#ffffff'">
+                                    {{ user.username }}
+                                </a>
+                                {% if current_user and current_user.id == user.id %}
+                                <span style="font-size: 11px; color: #34d399; font-weight: 500;">(Current Session)</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+
+                    <td style="color: #cbd5e1; font-size: 14px;">
+                        {{ user.email }}
+                    </td>
+
+                    <td style="color: #94a3b8; font-size: 13px;">
                         {{ user.created_at.strftime("%d %b %Y, %I:%M %p") if user.created_at else "N/A" }}
                     </td>
-                    <td>
-                        {% if user.is_admin %}
-                        <span class="status-badge" style="background: linear-gradient(135deg, #8b5cf6, #6d5efc); color: #ffffff; font-weight: 700; box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);">
-                            🛡️ Admin
+
+                    <td style="text-align: center;">
+                        {% set count = user_order_stats[user.id].order_count if user_order_stats and user.id in user_order_stats else (user.orders|length if user.orders else 0) %}
+                        {% if count > 0 %}
+                        <span class="status-badge" style="background: rgba(139, 92, 246, 0.18); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); font-weight: 600; padding: 4px 10px;">
+                            🧾 {{ count }} {{ 'Order' if count == 1 else 'Orders' }}
                         </span>
                         {% else %}
-                        <span class="status-badge" style="background: rgba(255, 255, 255, 0.08); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.12);">
-                            Customer
+                        <span style="color: #64748b; font-size: 13px;">0 orders</span>
+                        {% endif %}
+                    </td>
+
+                    <td style="text-align: center;">
+                        {% if user.is_admin %}
+                        <span class="status-badge" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #ffffff; font-weight: 700; box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); padding: 4px 12px;">
+                            🛡️ Administrator
+                        </span>
+                        {% else %}
+                        <span class="status-badge" style="background: rgba(255, 255, 255, 0.06); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.12); padding: 4px 12px;">
+                            🛍️ Customer
                         </span>
                         {% endif %}
+                    </td>
+
+                    <td style="text-align: right;">
+                        <div style="display: inline-flex; gap: 8px; align-items: center;">
+                            <a href="{{ url_for('admin_user_details', user_id=user.id) }}" class="quick-btn" style="padding: 6px 12px; font-size: 12px; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #c4b5fd; text-decoration: none;">
+                                👁️ Details
+                            </a>
+
+                            {% if current_user and current_user.id == user.id and user.is_admin %}
+                            <button disabled title="You cannot revoke your own administrator privileges." class="quick-btn" style="padding: 6px 12px; font-size: 12px; opacity: 0.4; cursor: not-allowed;">
+                                🛡️ Self
+                            </button>
+                            {% else %}
+                            <form action="{{ url_for('admin_toggle_user_status', user_id=user.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to {{ 'demote ' + user.username + ' to Customer' if user.is_admin else 'promote ' + user.username + ' to Administrator' }}?');">
+                                <button type="submit" class="quick-btn" style="padding: 6px 12px; font-size: 12px; background: {% if user.is_admin %}rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;{% else %}rgba(52, 211, 153, 0.15); border-color: rgba(52, 211, 153, 0.3); color: #6ee7b7;{% endif %} cursor: pointer;">
+                                    {% if user.is_admin %}Demote{% else %}Make Admin{% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5" style="text-align: center; color: #94a3b8; padding: 30px;">
-                        No registered users found.
+                    <td colspan="7" style="text-align: center; color: #94a3b8; padding: 40px;">
+                        <p style="font-size: 16px; margin-bottom: 8px;">No registered accounts matched your criteria.</p>
+                        {% if search_query or role_filter %}
+                        <a href="{{ url_for('admin_users') }}" class="quick-btn" style="display: inline-block; margin-top: 10px;">
+                            Clear Filters & View All Users
+                        </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

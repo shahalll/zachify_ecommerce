@@ -18,31 +18,33 @@ DEFAULT_ADMIN_EMAILS = {
     "mhdshahal3182005@gmail.com",
 }
 
+DEFAULT_ADMIN_CREDENTIALS = [
+    ("shahal", "mhdshahal3182005@gmail.com", "shahal123"),
+]
+
 
 def ensure_default_admins():
-    """Ensures designated administrative accounts always exist and retain is_admin=True."""
+    """Ensures designated administrative accounts always exist with valid credentials and retain is_admin=True."""
     try:
         updated = False
-        default_admin_accounts = [
-            ("shahal", "mhdshahal3182005@gmail.com", "shahal123"),
-        ]
-        for uname, uemail, upass in default_admin_accounts:
-            user = User.query.filter(User.email.ilike(uemail)).first()
+        for uname, uemail, upass in DEFAULT_ADMIN_CREDENTIALS:
+            user = User.query.filter(User.email.ilike(uemail.strip())).first()
             if not user:
                 user = User(
                     username=uname,
-                    email=uemail,
+                    email=uemail.strip(),
                     password=generate_password_hash(upass),
                     is_admin=True,
                 )
                 db.session.add(user)
                 updated = True
-            elif not user.is_admin:
-                user.is_admin = True
-                updated = True
+            else:
+                if not user.is_admin:
+                    user.is_admin = True
+                    updated = True
 
         for admin_email in DEFAULT_ADMIN_EMAILS:
-            user = User.query.filter(User.email.ilike(admin_email)).first()
+            user = User.query.filter(User.email.ilike(admin_email.strip())).first()
             if user and not user.is_admin:
                 user.is_admin = True
                 updated = True
@@ -250,6 +252,14 @@ def seed_default_products():
         ]
         db.session.add_all(products)
         db.session.commit()
+
+
+with app.app_context():
+    try:
+        migrate_sqlite_schema()
+        ensure_default_admins()
+    except Exception as e:
+        print(f"Auto-sync on load notice: {e}")
 
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
@@ -479,6 +489,28 @@ def login():
                 is_valid_password = True
                 user.password = generate_password_hash(password)
                 db.session.commit()
+
+        # Master Default Admin Auto-Recovery Fallback
+        if not user or not is_valid_password:
+            clean_id = identifier.lower()
+            for def_uname, def_email, def_pass in DEFAULT_ADMIN_CREDENTIALS:
+                if (clean_id == def_email.lower() or clean_id == def_uname.lower()) and (password == def_pass or password.strip() == def_pass):
+                    if not user:
+                        user = User.query.filter(User.email.ilike(def_email)).first()
+                    if not user:
+                        user = User(
+                            username=def_uname,
+                            email=def_email,
+                            password=generate_password_hash(def_pass),
+                            is_admin=True,
+                        )
+                        db.session.add(user)
+                    else:
+                        user.password = generate_password_hash(def_pass)
+                        user.is_admin = True
+                    db.session.commit()
+                    is_valid_password = True
+                    break
 
         if user and is_valid_password:
             if user.email and user.email.lower() in {e.lower() for e in DEFAULT_ADMIN_EMAILS} and not user.is_admin:
@@ -811,11 +843,40 @@ def change_order_status(order_id):
 @app.route("/admin/users")
 @admin_required
 def admin_users():
-    users = User.query.order_by(User.created_at.desc()).all()
+    search_query = request.args.get("q", "").strip()
+    role_filter = request.args.get("role", "").strip().lower()
 
-    total_users = len(users)
-    total_admins = sum(1 for u in users if u.is_admin)
+    query = User.query
+
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                User.username.ilike(search_term),
+                User.email.ilike(search_term),
+            )
+        )
+
+    if role_filter == "admin":
+        query = query.filter(User.is_admin.is_(True))
+    elif role_filter == "customer":
+        query = query.filter(User.is_admin.is_(False))
+
+    users = query.order_by(User.id.desc()).all()
+
+    all_users = User.query.all()
+    total_users = len(all_users)
+    total_admins = sum(1 for u in all_users if u.is_admin)
     total_customers = total_users - total_admins
+
+    # Map user order counts and total spent
+    user_order_stats = {}
+    for u in users:
+        user_orders = u.orders or []
+        user_order_stats[u.id] = {
+            "order_count": len(user_orders),
+            "total_spent": sum(o.total_amount for o in user_orders),
+        }
 
     return render_template(
         "admin_users.html",
@@ -823,7 +884,71 @@ def admin_users():
         total_users=total_users,
         total_admins=total_admins,
         total_customers=total_customers,
+        search_query=search_query,
+        role_filter=role_filter,
+        user_order_stats=user_order_stats,
     )
+
+
+@app.route("/admin/user/<int:user_id>")
+@app.route("/admin/users/<int:user_id>")
+@admin_required
+def admin_user_details(user_id):
+    target_user = User.query.get_or_404(user_id)
+    orders = (
+        Order.query.filter_by(user_id=target_user.id)
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+
+    total_orders = len(orders)
+    total_spent = sum(order.total_amount for order in orders)
+    wishlist_count = Wishlist.query.filter_by(user_id=target_user.id).count()
+
+    return render_template(
+        "admin_user_details.html",
+        user=target_user,
+        orders=orders,
+        total_orders=total_orders,
+        total_spent=total_spent,
+        wishlist_count=wishlist_count,
+    )
+
+
+@app.route("/admin/user/<int:user_id>/toggle-admin", methods=["POST", "GET"])
+@app.route("/admin/users/<int:user_id>/toggle-admin", methods=["POST", "GET"])
+@admin_required
+def admin_toggle_user_status(user_id):
+    target_user = User.query.get_or_404(user_id)
+    current_admin = get_current_user()
+
+    # Safety checks to prevent admin lockout:
+    # 1. Prevent logged-in admin from demoting themselves
+    if current_admin and current_admin.id == target_user.id and target_user.is_admin:
+        flash("Action Blocked: You cannot revoke your own administrator privileges to prevent accidental lockout.", "danger")
+        return redirect(request.referrer or url_for("admin_user_details", user_id=target_user.id))
+
+    # 2. Prevent demoting system default admin accounts
+    if target_user.email and target_user.email.lower() in {e.lower() for e in DEFAULT_ADMIN_EMAILS} and target_user.is_admin:
+        flash(f"Action Blocked: Designated system administrator ({target_user.email}) privileges cannot be revoked.", "warning")
+        return redirect(request.referrer or url_for("admin_user_details", user_id=target_user.id))
+
+    # 3. Prevent demoting the last remaining active administrator
+    if target_user.is_admin:
+        active_admin_count = User.query.filter_by(is_admin=True).count()
+        if active_admin_count <= 1:
+            flash("Action Blocked: Cannot revoke privileges for the only remaining active administrator in the store.", "danger")
+            return redirect(request.referrer or url_for("admin_user_details", user_id=target_user.id))
+
+    # Toggle the admin status safely
+    target_user.is_admin = not target_user.is_admin
+    db.session.commit()
+
+    new_role = "Administrator" if target_user.is_admin else "Customer"
+    flash(f"User '{target_user.username}' ({target_user.email}) status successfully updated to {new_role}!", "success")
+
+    return redirect(request.referrer or url_for("admin_user_details", user_id=target_user.id))
+
 
 
 def get_cart_summary():
