@@ -16,7 +16,11 @@
             <div class="details-ambient-glow"></div>
             <div class="details-image-wrapper">
                 <span class="badge-new details-badge">FLAGSHIP</span>
-                <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" class="floating-detail-img">
+                {% if product.image.startswith('http://') or product.image.startswith('https://') %}
+                    <img src="{{ product.image }}" alt="{{ product.name }}" class="floating-detail-img">
+                {% else %}
+                    <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}" class="floating-detail-img">
+                {% endif %}
             </div>
         </div>
 
@@ -27,8 +31,20 @@
             <h1 class="details-title">{{ product.name }}</h1>
 
             <div class="details-rating-bar">
-                <span class="stars">★★★★★</span>
-                <span class="rating-text">4.8</span>
+                <span class="stars" style="color: #fbbf24; letter-spacing: 2px;">
+                    {% if review_count > 0 %}
+                        {{ "★" * (average_rating|round|int) }}{{ "☆" * (5 - (average_rating|round|int)) }}
+                    {% else %}
+                        ★★★★★
+                    {% endif %}
+                </span>
+                <span class="rating-text">
+                    {% if review_count > 0 %}
+                        {{ "%.1f"|format(average_rating) }} ({{ review_count }} {% if review_count == 1 %}review{% else %}reviews{% endif %})
+                    {% else %}
+                        No reviews yet
+                    {% endif %}
+                </span>
                 <span class="verified-badge">✓ Verified Genuine</span>
             </div>
 
@@ -58,7 +74,7 @@
                 <div class="quantity-selector">
                     <button type="button" class="qty-btn minus" onclick="var input=document.getElementById('qty-input'); if(parseInt(input.value)>1) input.value=parseInt(input.value)-1;">-</button>
                     <input type="number" id="qty-input" value="1" min="1" max="{{ product.stock }}" readonly>
-                    <button type="button" class="qty-btn plus" onclick="var input=document.getElementById('qty-input'); input.value=parseInt(input.value)+1;">+</button>
+                    <button type="button" class="qty-btn plus" onclick="var input=document.getElementById('qty-input'); if(parseInt(input.value)<{{ product.stock }}) input.value=parseInt(input.value)+1;">+</button>
                 </div>
             </div>
 
@@ -76,9 +92,9 @@
                     </button>
                 </form>
 
-                <button type="button" class="wishlist-btn" title="Add to Wishlist" onclick="this.classList.toggle('active');">
+                <a href="{{ url_for('add_to_wishlist', product_id=product.id) }}" class="wishlist-btn" title="Add to Wishlist" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
                     ♡
-                </button>
+                </a>
             </div>
 
             <!-- Delivery & Warranty Information Grid -->
@@ -123,5 +139,202 @@
             </div>
         </div>
     </div>
+
+    <!-- ==========================================================
+         PRODUCT REVIEWS & RATINGS SECTION
+         ========================================================== -->
+    <section class="reviews-section" id="reviewsSection">
+        <div class="reviews-header">
+            <div>
+                <p class="section-eyebrow">VERIFIED BUYER FEEDBACK</p>
+                <h2>Customer Reviews & Ratings</h2>
+                <p style="color: #94a3b8; font-size: 0.95rem;">Real feedback from customers who purchased {{ product.name }}.</p>
+            </div>
+        </div>
+
+        <div class="reviews-layout-grid">
+            <!-- Left: Ratings Breakdown Overview -->
+            <div class="ratings-overview-card">
+                <div class="big-score-box">
+                    <span class="big-score-number">
+                        {% if review_count > 0 %}{{ "%.1f"|format(average_rating) }}{% else %}0.0{% endif %}
+                    </span>
+                    <span class="big-score-stars" style="color: #fbbf24; font-size: 1.4rem; letter-spacing: 2px;">
+                        {% if review_count > 0 %}
+                            {{ "★" * (average_rating|round|int) }}{{ "☆" * (5 - (average_rating|round|int)) }}
+                        {% else %}
+                            ☆☆☆☆☆
+                        {% endif %}
+                    </span>
+                    <span class="big-score-count">
+                        Based on {{ review_count }} verified {% if review_count == 1 %}review{% else %}reviews{% endif %}
+                    </span>
+                </div>
+
+                <!-- Star Rating Distribution Bars -->
+                <div class="rating-breakdown-list">
+                    {% for star in range(5, 0, -1) %}
+                    <div class="breakdown-row">
+                        <span class="breakdown-star-label">{{ star }} ★</span>
+                        <div class="breakdown-bar-track">
+                            <div class="breakdown-bar-fill" style="width: {{ rating_percentages[star] }}%;"></div>
+                        </div>
+                        <span class="breakdown-star-count">{{ rating_counts[star] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Right: Review Action & Form Area -->
+            <div class="review-action-container">
+                {% if not current_user %}
+                <!-- 1. Guest: Login required -->
+                <div class="review-prompt-card">
+                    <div class="prompt-icon">🔒</div>
+                    <h3>Login to write a review</h3>
+                    <p>Share your honest experience with other customers after purchasing this product.</p>
+                    <a href="{{ url_for('login') }}" class="place-order-btn" style="display: inline-block; width: auto; padding: 10px 24px; text-decoration: none; margin-top: 12px;">
+                        Login to Review
+                    </a>
+                </div>
+
+                {% elif not has_purchased %}
+                <!-- 2. Logged in, but hasn't purchased -->
+                <div class="review-prompt-card">
+                    <div class="prompt-icon">🛍️</div>
+                    <h3>Verified Purchase Required</h3>
+                    <p>Purchase this product to write a review. Only verified buyers can submit feedback.</p>
+                </div>
+
+                {% elif user_review %}
+                <!-- 3. Already reviewed: Show user review with Edit/Delete -->
+                <div class="user-existing-review-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <span class="status-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35);">
+                                ✓ Your Submitted Review
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{{ url_for('edit_review', review_id=user_review.id) }}" class="edit-btn" style="text-decoration: none; padding: 6px 12px; font-size: 12px;">
+                                ✏️ Edit Review
+                            </a>
+                            <form action="{{ url_for('delete_review', review_id=user_review.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete your review?');" style="display: inline;">
+                                <button type="submit" class="delete-btn" style="padding: 6px 12px; font-size: 12px;">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div style="color: #fbbf24; font-size: 1.2rem; margin-bottom: 6px; letter-spacing: 2px;">
+                        {{ "★" * user_review.rating }}{{ "☆" * (5 - user_review.rating) }}
+                        <span style="font-size: 0.9rem; color: #94a3b8; margin-left: 6px;">{{ user_review.rating }} / 5</span>
+                    </div>
+                    <p style="color: #f8fafc; font-size: 1rem; line-height: 1.6; margin-bottom: 8px;">
+                        "{{ user_review.comment }}"
+                    </p>
+                    <small style="color: #94a3b8;">
+                        Posted on {{ user_review.created_at.strftime("%d %b %Y, %I:%M %p") }}
+                    </small>
+                </div>
+
+                {% else %}
+                <!-- 4. Logged in and verified buyer: Show Review Submission Form -->
+                <div class="review-form-card">
+                    <h3>✍️ Write a Review</h3>
+                    <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 16px;">
+                        You are a verified buyer of this product. Let others know what you think!
+                    </p>
+
+                    <form action="{{ url_for('add_product_review', product_id=product.id) }}" method="POST">
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label class="form-label" style="display: block; color: #cbd5e1; font-weight: 600; margin-bottom: 8px;">
+                                Overall Rating <span style="color: #ef4444;">*</span>
+                            </label>
+                            <div class="star-rating-selector">
+                                {% for i in range(5, 0, -1) %}
+                                <input type="radio" id="newStar{{ i }}" name="rating" value="{{ i }}" {% if i == 5 %}checked{% endif %} required>
+                                <label for="newStar{{ i }}" title="{{ i }} stars">★</label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label class="form-label" style="display: block; color: #cbd5e1; font-weight: 600; margin-bottom: 8px;">
+                                Your Feedback <span style="color: #ef4444;">*</span>
+                            </label>
+                            <textarea name="comment" rows="4" placeholder="How was the quality, fit, finish, or performance? Share your experience..." required minlength="3" maxlength="1000" class="review-textarea"></textarea>
+                            <small style="color: #94a3b8; display: block; margin-top: 4px;">Minimum 3 characters, maximum 1,000 characters.</small>
+                        </div>
+
+                        <button type="submit" class="place-order-btn" style="width: auto; padding: 12px 30px;">
+                            🌟 Submit Review
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Individual Customer Reviews List -->
+        <div class="reviews-list-container">
+            <h3 style="color: #f8fafc; font-size: 1.3rem; margin-bottom: 20px;">
+                Customer Reviews ({{ reviews|length }})
+            </h3>
+
+            {% if reviews %}
+                <div class="reviews-cards-stack">
+                    {% for review in reviews %}
+                    <article class="single-review-card">
+                        <div class="review-card-top">
+                            <div class="reviewer-meta">
+                                <div class="reviewer-avatar">
+                                    {{ review.user.username[0]|upper if review.user else 'U' }}
+                                </div>
+                                <div>
+                                    <h4 class="reviewer-name">
+                                        {{ review.user.username if review.user else 'Verified Customer' }}
+                                    </h4>
+                                    <span class="verified-buyer-badge">✓ Verified Buyer</span>
+                                </div>
+                            </div>
+                            <div class="review-meta-right">
+                                <div class="review-stars" style="color: #fbbf24; font-size: 1.1rem; letter-spacing: 2px;">
+                                    {{ "★" * review.rating }}{{ "☆" * (5 - review.rating) }}
+                                </div>
+                                <span class="review-date">{{ review.created_at.strftime("%d %b %Y") }}</span>
+                            </div>
+                        </div>
+
+                        <div class="review-card-body">
+                            <p>"{{ review.comment }}"</p>
+                        </div>
+
+                        {% if current_user and (current_user.id == review.user_id or current_user.is_admin) %}
+                        <div class="review-card-footer" style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 10px;">
+                            {% if current_user.id == review.user_id %}
+                            <a href="{{ url_for('edit_review', review_id=review.id) }}" class="edit-btn" style="font-size: 12px; padding: 4px 10px; text-decoration: none;">
+                                ✏️ Edit
+                            </a>
+                            {% endif %}
+                            <form action="{{ url_for('delete_review', review_id=review.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this review?');" style="display: inline;">
+                                <button type="submit" class="delete-btn" style="font-size: 12px; padding: 4px 10px;">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-reviews-box">
+                    <div style="font-size: 2.5rem; margin-bottom: 10px;">💬</div>
+                    <h4>No reviews yet for this product</h4>
+                    <p style="color: #94a3b8; font-size: 0.95rem;">Be the first verified customer to share your thoughts!</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
 </section>
 {% endblock %}

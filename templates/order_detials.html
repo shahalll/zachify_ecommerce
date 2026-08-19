@@ -1,90 +1,114 @@
 {% extends "base.html" %}
 
 {% block title %}
-Order Details - Zachify
+Order #{{ order.order_number }} - Zachify
 {% endblock %}
 
 {% block content %}
-
 <div class="order-details-page">
 
     <div class="order-header">
-
         <div>
-
             <p class="order-kicker">ORDER DETAILS</p>
-
             <h1>Order #{{ order.order_number }}</h1>
-
             <p>
-                Placed on
-                {{ order.created_at.strftime("%d %b %Y") }}
+                Placed on {{ order.created_at.strftime("%d %b %Y, %I:%M %p") }} &bull;
+                <span class="status-badge {{ order.status|lower }}">
+                    {{ order.status }}
+                </span>
             </p>
-
         </div>
-
         <a href="{{ url_for('orders') }}" class="back-btn">
-
-            ← Back to Orders
-
+            ← Back to My Orders
         </a>
-
     </div>
 
-    <div class="order-card">
-
-        <div class="order-meta">
-
-            <span>Status</span>
-
-            <strong>{{ order.status }}</strong>
-
+    <!-- Order Overview Cards -->
+    <div class="order-details-grid">
+        <!-- Status & Payment Info Card -->
+        <div class="order-card">
+            <div class="order-card-header">
+                <h3>⚡ Order Status & Payment</h3>
+            </div>
+            <div class="order-info-list">
+                <div class="order-info-row">
+                    <span>Fulfillment Status</span>
+                    <strong class="status-badge {{ order.status|lower }}">{{ order.status }}</strong>
+                </div>
+                <div class="order-info-row">
+                    <span>Payment Method</span>
+                    <strong>💳 {{ order.payment_method or 'Cash on Delivery' }}</strong>
+                </div>
+                <div class="order-info-row">
+                    <span>Order Date</span>
+                    <span>{{ order.created_at.strftime("%d %b %Y, %I:%M %p") }}</span>
+                </div>
+                <div class="order-info-row">
+                    <span>Total Paid</span>
+                    <strong style="color: #38bdf8; font-size: 1.1rem;">₹{{ "%.2f"|format(order.total_amount) }}</strong>
+                </div>
+            </div>
         </div>
 
-        <div class="order-meta">
-
-            <span>Total Amount</span>
-
-            <strong>₹{{ "%.2f"|format(order.total_amount) }}</strong>
-
+        <!-- Delivery Address Card -->
+        <div class="order-card">
+            <div class="order-card-header">
+                <h3>📍 Delivery Address</h3>
+            </div>
+            <div class="order-shipping-info">
+                {% if order.shipping_full_name %}
+                    <p style="font-weight: 700; color: #f8fafc; font-size: 1.05rem;">{{ order.shipping_full_name }}</p>
+                    <p style="color: #cbd5e1; margin-top: 4px;">{{ order.shipping_address }}</p>
+                    <p style="color: #cbd5e1;">{{ order.shipping_city }}, {{ order.shipping_state }} - {{ order.shipping_pin }}</p>
+                    <div style="margin-top: 10px; font-size: 0.9rem; color: #94a3b8; display: flex; flex-direction: column; gap: 4px;">
+                        {% if order.shipping_phone %}
+                        <span>📞 {{ order.shipping_phone }}</span>
+                        {% endif %}
+                        {% if order.shipping_email %}
+                        <span>✉️ {{ order.shipping_email }}</span>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p style="color: #94a3b8;">Standard customer delivery address recorded.</p>
+                {% endif %}
+            </div>
         </div>
-
     </div>
 
-   <div class="order-card">
+    <!-- Ordered Items -->
+    <div class="order-card" style="margin-top: 24px;">
+        <div class="order-card-header">
+            <h3>📦 Ordered Items ({{ order.items|length }})</h3>
+        </div>
 
-    {% for item in order.items %}
+        {% for item in order.items %}
+        <div class="order-item">
+            <div class="order-product">
+                {% if item.product_image.startswith('http://') or item.product_image.startswith('https://') %}
+                    <img src="{{ item.product_image }}" alt="{{ item.product_name }}">
+                {% else %}
+                    <img src="{{ url_for('static', filename='images/' + item.product_image) }}" alt="{{ item.product_name }}">
+                {% endif %}
 
-    <div class="order-item">
-
-        <div class="order-product">
-
-            <img src="{{ url_for('static', filename='images/' + item.product_image) }}"
-                 alt="{{ item.product_name }}">
-
-            <div>
-                <h3>{{ item.product_name }}</h3>
-                <p>Quantity: {{ item.quantity }}</p>
-                <p>Unit Price: ₹{{ "%.2f"|format(item.unit_price) }}</p>
+                <div>
+                    <h3>{{ item.product_name }}</h3>
+                    <p>Quantity: <strong>{{ item.quantity }}</strong></p>
+                    <p>Unit Price: ₹{{ "%.2f"|format(item.unit_price) }}</p>
+                </div>
             </div>
 
+            <div class="order-price">
+                <span>Subtotal</span>
+                <h3>₹{{ "%.2f"|format(item.total_price) }}</h3>
+            </div>
         </div>
+        {% endfor %}
 
-        <div class="order-price">
-            <h3>₹{{ "%.2f"|format(item.total_price) }}</h3>
+        <div class="order-total">
+            <h2>Grand Total</h2>
+            <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
         </div>
-
-    </div>
-
-    {% endfor %}
-
-    <div class="order-total">
-        <h2>Grand Total</h2>
-        <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
     </div>
 
 </div>
-
-</div>
-
 {% endblock %}

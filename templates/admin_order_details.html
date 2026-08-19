@@ -46,7 +46,7 @@ Order #{{ order.order_number }} Details - Zachify Admin
     <!-- Main Grid: Items & Info on Left, Status & Summary on Right -->
     <div class="admin-order-grid">
 
-        <!-- Left Column: Customer Details & Line Items -->
+        <!-- Left Column: Customer Details, Shipping Info & Line Items -->
         <div>
 
             <!-- Customer Information Card -->
@@ -93,6 +93,50 @@ Order #{{ order.order_number }} Details - Zachify Admin
                                 <span style="color: #94a3b8;">Customer</span>
                             {% endif %}
                         </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipping & Delivery Details Card -->
+            <div class="admin-info-card">
+                <div class="admin-info-card-header">
+                    <h3>📍 Shipping & Delivery Details</h3>
+                </div>
+
+                <div class="admin-info-list">
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Recipient Full Name</span>
+                        <span class="admin-info-val">{{ order.shipping_full_name or (order.user.username if order.user else 'N/A') }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Phone Number</span>
+                        <span class="admin-info-val" style="color: #38bdf8;">{{ order.shipping_phone or 'N/A' }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Contact Email</span>
+                        <span class="admin-info-val" style="color: #cbd5e1;">{{ order.shipping_email or (order.user.email if order.user else 'N/A') }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">Delivery Address</span>
+                        <span class="admin-info-val">{{ order.shipping_address or 'N/A' }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">City</span>
+                        <span class="admin-info-val">{{ order.shipping_city or 'N/A' }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">State</span>
+                        <span class="admin-info-val">{{ order.shipping_state or 'N/A' }}</span>
+                    </div>
+
+                    <div class="admin-info-item">
+                        <span class="admin-info-label">PIN Code</span>
+                        <span class="admin-info-val">{{ order.shipping_pin or 'N/A' }}</span>
                     </div>
                 </div>
             </div>
@@ -209,6 +253,13 @@ Order #{{ order.order_number }} Details - Zachify Admin
                     <span class="admin-info-label">Date & Time</span>
                     <span class="admin-info-val" style="font-size: 14px; color: #cbd5e1;">
                         {{ order.created_at.strftime("%d %b %Y, %I:%M %p") }}
+                    </span>
+                </div>
+
+                <div class="admin-info-item" style="margin-bottom: 12px;">
+                    <span class="admin-info-label">Payment Method</span>
+                    <span class="admin-info-val" style="color: #38bdf8; font-weight: 700;">
+                        💳 {{ order.payment_method or 'Cash on Delivery' }}
                     </span>
                 </div>
 

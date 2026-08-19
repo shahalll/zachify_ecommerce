@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit Review - {{ product.name }} - Zachify
+{% endblock %}
+
+{% block content %}
+<div class="edit-review-container">
+    <div class="edit-review-hero">
+        <p class="section-eyebrow">REVIEW MANAGEMENT</p>
+        <h1>Edit Your Review</h1>
+        <p class="edit-review-subtitle">
+            Update your rating and feedback for <strong>{{ product.name }}</strong>.
+        </p>
+    </div>
+
+    <div class="edit-review-card">
+        <div class="edit-review-product-preview">
+            <div class="preview-media">
+                {% if product.image.startswith('http://') or product.image.startswith('https://') %}
+                    <img src="{{ product.image }}" alt="{{ product.name }}">
+                {% else %}
+                    <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+                {% endif %}
+            </div>
+            <div class="preview-info">
+                <span class="preview-category">{{ product.category }}</span>
+                <h3>{{ product.name }}</h3>
+                <p>₹{{ "%.2f"|format(product.price) }}</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('edit_review', review_id=review.id) }}" class="review-form">
+            <div class="form-group">
+                <label class="form-label">Your Rating *</label>
+                <div class="star-rating-selector" id="starRatingSelector">
+                    {% for i in range(5, 0, -1) %}
+                    <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}" {% if review.rating == i %}checked{% endif %} required>
+                    <label for="star{{ i }}" title="{{ i }} stars">★</label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label class="form-label">Your Review Feedback *</label>
+                <textarea name="comment" rows="5" placeholder="Write your updated thoughts on product quality, performance, and experience..." required minlength="3" maxlength="1000" class="review-textarea">{{ review.comment }}</textarea>
+                <small style="color: #94a3b8; display: block; margin-top: 6px;">Maximum 1,000 characters.</small>
+            </div>
+
+            <div class="edit-review-actions" style="margin-top: 25px; display: flex; gap: 14px; flex-wrap: wrap;">
+                <button type="submit" class="place-order-btn" style="flex: 1; min-width: 200px;">
+                    💾 Save Changes
+                </button>
+                <a href="{{ url_for('product_detail', id=product.id) }}" class="ghost-btn" style="text-align: center; text-decoration: none; min-width: 140px; display: inline-flex; align-items: center; justify-content: center;">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

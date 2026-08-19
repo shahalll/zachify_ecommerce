@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}
+Order Confirmation - Zachify
+{% endblock %}
+
+{% block content %}
+<section class="order-success-page">
+    <div class="order-success-hero">
+        <div class="success-icon-badge">🎉</div>
+        <p class="section-eyebrow">ORDER CONFIRMED</p>
+        <h1>Order Placed Successfully!</h1>
+        <p class="success-lead">
+            Thank you for shopping with <strong>Zachify</strong>. Your order has been placed and is currently being processed.
+        </p>
+    </div>
+
+    <div class="order-success-shell">
+        <!-- Main Details Column -->
+        <div class="success-main-column">
+            <!-- Order Meta Card -->
+            <div class="success-card">
+                <div class="success-card-header">
+                    <h3>📦 Order Information</h3>
+                    <span class="status-badge {{ order.status|lower }}">
+                        {{ order.status }}
+                    </span>
+                </div>
+                <div class="success-meta-grid">
+                    <div class="success-meta-item">
+                        <span class="meta-label">Order Number</span>
+                        <strong class="meta-value order-code">{{ order.order_number }}</strong>
+                    </div>
+                    <div class="success-meta-item">
+                        <span class="meta-label">Order Date</span>
+                        <span class="meta-value">{{ order.created_at.strftime("%d %b %Y, %I:%M %p") }}</span>
+                    </div>
+                    <div class="success-meta-item">
+                        <span class="meta-label">Payment Method</span>
+                        <span class="meta-value">💳 {{ order.payment_method or 'Cash on Delivery' }}</span>
+                    </div>
+                    <div class="success-meta-item">
+                        <span class="meta-label">Total Amount</span>
+                        <strong class="meta-value total-highlight">₹{{ "%.2f"|format(order.total_amount) }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ordered Items Card -->
+            <div class="success-card">
+                <div class="success-card-header">
+                    <h3>🛍️ Ordered Items ({{ order.items|length }})</h3>
+                </div>
+                <div class="success-items-list">
+                    {% for item in order.items %}
+                    <div class="success-item-row">
+                        <div class="success-item-media">
+                            {% if item.product_image.startswith('http://') or item.product_image.startswith('https://') %}
+                                <img src="{{ item.product_image }}" alt="{{ item.product_name }}">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/' + item.product_image) }}" alt="{{ item.product_name }}">
+                            {% endif %}
+                        </div>
+                        <div class="success-item-details">
+                            <h4>{{ item.product_name }}</h4>
+                            <p>Quantity: <strong>{{ item.quantity }}</strong> &bull; Unit Price: ₹{{ "%.2f"|format(item.unit_price) }}</p>
+                        </div>
+                        <div class="success-item-subtotal">
+                            ₹{{ "%.2f"|format(item.total_price) }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Delivery Address Card -->
+            <div class="success-card">
+                <div class="success-card-header">
+                    <h3>📍 Delivery Information</h3>
+                </div>
+                <div class="success-address-box">
+                    <p class="address-recipient"><strong>{{ order.shipping_full_name or 'N/A' }}</strong></p>
+                    <p class="address-line">{{ order.shipping_address or 'N/A' }}</p>
+                    <p class="address-city-state">
+                        {{ order.shipping_city or '' }}{% if order.shipping_city and order.shipping_state %}, {% endif %}{{ order.shipping_state or '' }} - {{ order.shipping_pin or '' }}
+                    </p>
+                    <div class="address-contact-details">
+                        {% if order.shipping_phone %}
+                        <span>📞 <strong>Phone:</strong> {{ order.shipping_phone }}</span>
+                        {% endif %}
+                        {% if order.shipping_email %}
+                        <span>✉️ <strong>Email:</strong> {{ order.shipping_email }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side Actions & Summary -->
+        <aside class="success-aside">
+            <div class="success-card summary-card">
+                <div class="success-card-header">
+                    <h3>🧾 Summary</h3>
+                </div>
+                <div class="summary-list">
+                    <div class="summary-row">
+                        <span>Items Total</span>
+                        <strong>{{ order.items|sum(attribute='quantity') }} units</strong>
+                    </div>
+                    <div class="summary-row total-row">
+                        <span>Grand Total</span>
+                        <strong class="grand-total-val">₹{{ "%.2f"|format(order.total_amount) }}</strong>
+                    </div>
+                </div>
+
+                <div class="success-actions-block">
+                    <a href="{{ url_for('order_details', order_id=order.id) }}" class="checkout-btn" style="text-align: center; text-decoration: none; margin-bottom: 12px; display: block;">
+                        View Order Details →
+                    </a>
+                    <a href="{{ url_for('orders') }}" class="ghost-btn" style="text-align: center; text-decoration: none; margin-bottom: 12px; display: block;">
+                        📦 My Orders
+                    </a>
+                    <a href="{{ url_for('products') }}" class="secondary-link" style="display: block; text-align: center;">
+                        Continue Shopping
+                    </a>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+{% endblock %}

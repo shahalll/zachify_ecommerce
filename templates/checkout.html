@@ -16,7 +16,7 @@ Checkout - Zachify
     </div>
 
     <div class="checkout-shell">
-        <form class="checkout-form-card" method="post">
+        <form class="checkout-form-card" id="checkoutForm" method="post" action="{{ url_for('checkout') }}">
             <div class="checkout-section">
                 <div class="checkout-section__head">
                     <h2>Shipping details</h2>
@@ -25,32 +25,32 @@ Checkout - Zachify
 
                 <div class="checkout-grid">
                     <label>
-                        <span>Full Name</span>
-                        <input type="text" name="full_name" placeholder="Aarav Sharma" required>
+                        <span>Full Name <strong style="color: #ef4444;">*</strong></span>
+                        <input type="text" name="full_name" placeholder="Aarav Sharma" value="{{ form_data.get('full_name', current_user.username if current_user else '') }}" required>
                     </label>
                     <label>
-                        <span>Email</span>
-                        <input type="email" name="email" placeholder="you@example.com" required>
+                        <span>Email <strong style="color: #ef4444;">*</strong></span>
+                        <input type="email" name="email" placeholder="you@example.com" value="{{ form_data.get('email', current_user.email if current_user else '') }}" required>
                     </label>
                     <label>
-                        <span>Phone Number</span>
-                        <input type="tel" name="phone" placeholder="+91 98765 43210" required>
+                        <span>Phone Number <strong style="color: #ef4444;">*</strong></span>
+                        <input type="tel" name="phone" placeholder="+91 98765 43210" value="{{ form_data.get('phone', '') }}" required>
                     </label>
                     <label>
-                        <span>Delivery Address</span>
-                        <input type="text" name="address" placeholder="House No., Street, Landmark" required>
+                        <span>Delivery Address <strong style="color: #ef4444;">*</strong></span>
+                        <input type="text" name="address" placeholder="House No., Street, Landmark" value="{{ form_data.get('address', '') }}" required>
                     </label>
                     <label>
-                        <span>City</span>
-                        <input type="text" name="city" placeholder="Mumbai" required>
+                        <span>City <strong style="color: #ef4444;">*</strong></span>
+                        <input type="text" name="city" placeholder="Mumbai" value="{{ form_data.get('city', '') }}" required>
                     </label>
                     <label>
-                        <span>State</span>
-                        <input type="text" name="state" placeholder="Maharashtra" required>
+                        <span>State <strong style="color: #ef4444;">*</strong></span>
+                        <input type="text" name="state" placeholder="Maharashtra" value="{{ form_data.get('state', '') }}" required>
                     </label>
                     <label>
-                        <span>PIN Code</span>
-                        <input type="text" name="pin" placeholder="400001" required>
+                        <span>PIN Code <strong style="color: #ef4444;">*</strong></span>
+                        <input type="text" name="pin" placeholder="400001" value="{{ form_data.get('pin', '') }}" required>
                     </label>
                 </div>
             </div>
@@ -63,21 +63,23 @@ Checkout - Zachify
 
                 <div class="payment-options">
                     <label class="payment-option">
-                        <input type="radio" name="payment_method" value="cod" checked>
-                        <span>Cash on Delivery</span>
+                        <input type="radio" name="payment_method" value="cod" {% if form_data.get('payment_method', 'cod') == 'cod' %}checked{% endif %}>
+                        <span>💵 Cash on Delivery</span>
                     </label>
                     <label class="payment-option">
-                        <input type="radio" name="payment_method" value="upi">
-                        <span>UPI</span>
+                        <input type="radio" name="payment_method" value="upi" {% if form_data.get('payment_method') == 'upi' %}checked{% endif %}>
+                        <span>📱 UPI</span>
                     </label>
                     <label class="payment-option">
-                        <input type="radio" name="payment_method" value="card">
-                        <span>Credit / Debit Card</span>
+                        <input type="radio" name="payment_method" value="card" {% if form_data.get('payment_method') == 'card' %}checked{% endif %}>
+                        <span>💳 Credit / Debit Card</span>
                     </label>
                 </div>
             </div>
 
-            <button type="submit" class="place-order-btn">Place Order</button>
+            <button type="submit" class="place-order-btn" id="placeOrderBtn">
+                🔒 Place Order &bull; ₹{{ "%.2f"|format(grand_total) }}
+            </button>
         </form>
 
         <aside class="checkout-summary-card">
@@ -91,11 +93,15 @@ Checkout - Zachify
                 {% set product = item['product'] %}
                 <div class="summary-item">
                     <div class="summary-item__media">
-                        <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+                        {% if product.image.startswith('http://') or product.image.startswith('https://') %}
+                            <img src="{{ product.image }}" alt="{{ product.name }}">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='images/' + product.image) }}" alt="{{ product.name }}">
+                        {% endif %}
                     </div>
                     <div class="summary-item__info">
                         <h3>{{ product.name }}</h3>
-                        <p>Qty {{ item['quantity'] }}</p>
+                        <p>Qty {{ item['quantity'] }} &bull; ₹{{ "%.2f"|format(product.price) }}</p>
                         <strong>₹{{ "%.2f"|format(item['item_subtotal']) }}</strong>
                     </div>
                 </div>
@@ -124,4 +130,20 @@ Checkout - Zachify
         </aside>
     </div>
 </section>
+
+<script>
+    const checkoutForm = document.getElementById('checkoutForm');
+    const placeOrderBtn = document.getElementById('placeOrderBtn');
+
+    if (checkoutForm && placeOrderBtn) {
+        checkoutForm.addEventListener('submit', function(e) {
+            if (checkoutForm.checkValidity()) {
+                placeOrderBtn.disabled = true;
+                placeOrderBtn.innerText = '⏳ Processing Your Order...';
+                placeOrderBtn.style.opacity = '0.7';
+                placeOrderBtn.style.cursor = 'not-allowed';
+            }
+        });
+    }
+</script>
 {% endblock %}

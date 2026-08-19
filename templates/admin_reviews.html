@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}
+Customer Reviews - Zachify Admin
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+
+    <div class="admin-header">
+        <div>
+            <p class="admin-kicker">REVIEW MANAGEMENT</p>
+            <h1>Customer Reviews & Ratings</h1>
+            <p class="admin-subtitle">
+                Monitor customer feedback, ratings breakdown, and moderate reviews across the store.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('admin') }}" class="quick-btn" style="display: inline-flex; align-items: center; gap: 8px;">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="dashboard-cards">
+        <div class="dashboard-card">
+            <div class="card-icon">⭐</div>
+            <h2>{{ total_reviews }}</h2>
+            <p>Total Reviews</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">📊</div>
+            <h2>{{ "%.1f"|format(avg_rating) }} / 5.0</h2>
+            <p>Average Store Rating</p>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-icon">🌟</div>
+            <h2>{{ five_star_count }}</h2>
+            <p>5-Star Reviews</p>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="quick-actions">
+        <a href="{{ url_for('admin') }}" class="quick-btn">
+            ← Dashboard
+        </a>
+        <a href="{{ url_for('admin_products') }}" class="quick-btn">
+            📦 Products
+        </a>
+        <a href="{{ url_for('admin_orders') }}" class="quick-btn">
+            🧾 Orders
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="quick-btn">
+            👥 Users
+        </a>
+    </div>
+
+    <!-- Filters & Search -->
+    <div class="section-header" style="margin-top: 20px;">
+        <div>
+            <p class="section-kicker">ALL REVIEWS</p>
+            <h2>Reviews List ({{ reviews|length }})</h2>
+        </div>
+
+        <form method="GET" action="{{ url_for('admin_reviews') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input
+                type="text"
+                name="q"
+                value="{{ search_query or '' }}"
+                placeholder="Search reviews, products, users..."
+                class="inventory-search"
+            >
+            <select name="rating" class="inventory-search" style="min-width: 140px; cursor: pointer;" onchange="this.form.submit()">
+                <option value="">All Ratings</option>
+                <option value="5" {% if selected_rating == 5 %}selected{% endif %}>⭐⭐⭐⭐⭐ (5 Star)</option>
+                <option value="4" {% if selected_rating == 4 %}selected{% endif %}>⭐⭐⭐⭐ (4 Star)</option>
+                <option value="3" {% if selected_rating == 3 %}selected{% endif %}>⭐⭐⭐ (3 Star)</option>
+                <option value="2" {% if selected_rating == 2 %}selected{% endif %}>⭐⭐ (2 Star)</option>
+                <option value="1" {% if selected_rating == 1 %}selected{% endif %}>⭐ (1 Star)</option>
+            </select>
+            {% if search_query or selected_rating %}
+                <a href="{{ url_for('admin_reviews') }}" class="quick-btn" style="padding: 10px 14px; text-decoration: none;">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="table-card">
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th style="width: 220px;">Product</th>
+                    <th style="width: 180px;">Customer</th>
+                    <th style="width: 120px;">Rating</th>
+                    <th>Feedback / Comment</th>
+                    <th style="width: 130px;">Date</th>
+                    <th style="width: 100px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for review in reviews %}
+                <tr>
+                    <td style="text-align: left;">
+                        <div style="font-weight: 600; color: #ffffff;">
+                            <a href="{{ url_for('product_detail', id=review.product_id) }}" style="color: #c4b5fd; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                {{ review.product.name if review.product else 'Product #' ~ review.product_id }} ↗
+                            </a>
+                        </div>
+                        <small style="color: #94a3b8;">Ref: #{{ review.product_id }}</small>
+                    </td>
+
+                    <td style="text-align: left;">
+                        <div style="font-weight: 600; color: #ffffff;">
+                            {{ review.user.username if review.user else 'User #' ~ review.user_id }}
+                        </div>
+                        <small style="color: #94a3b8;">
+                            {{ review.user.email if review.user else 'N/A' }}
+                        </small>
+                    </td>
+
+                    <td>
+                        <span style="color: #fbbf24; font-weight: 700; font-size: 15px; letter-spacing: 2px;">
+                            {{ "★" * review.rating }}{{ "☆" * (5 - review.rating) }}
+                        </span>
+                        <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">{{ review.rating }} / 5</div>
+                    </td>
+
+                    <td style="text-align: left; color: #cbd5e1; font-size: 14px; line-height: 1.5; max-width: 350px;">
+                        "{{ review.comment }}"
+                    </td>
+
+                    <td style="color: #94a3b8; font-size: 13px;">
+                        {{ review.created_at.strftime("%d %b %Y") }}
+                    </td>
+
+                    <td>
+                        <form method="POST" action="{{ url_for('delete_review', review_id=review.id) }}" onsubmit="return confirm('Are you sure you want to permanently delete this customer review?');">
+                            <button type="submit" class="delete-btn" style="padding: 8px 12px; font-size: 13px;">
+                                🗑️ Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #94a3b8; padding: 40px;">
+                        <div style="font-size: 36px; margin-bottom: 10px;">⭐</div>
+                        <p style="font-size: 16px; font-weight: 600; color: #ffffff;">No product reviews found.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

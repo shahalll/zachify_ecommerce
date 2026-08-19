@@ -5,68 +5,63 @@ My Orders - Zachify
 {% endblock %}
 
 {% block content %}
-
 <div class="orders-page">
 
     <div class="orders-header">
-        <h1>📦 My Orders</h1>
-        <p>Track all your purchases from Zachify.</p>
+        <div>
+            <p class="section-eyebrow">PURCHASE HISTORY</p>
+            <h1>📦 My Orders</h1>
+            <p>Track, manage, and review all your purchases from Zachify.</p>
+        </div>
+        <a href="{{ url_for('products') }}" class="ghost-btn">Continue Shopping</a>
     </div>
 
     {% if orders %}
-
+    <div class="orders-list-grid">
         {% for order in orders %}
-
         <div class="order-card">
-
             <div class="order-top">
+                <div>
+                    <h3 style="color: #f8fafc; font-weight: 700; margin-bottom: 4px;">Order #{{ order.order_number }}</h3>
+                    <p style="color: #94a3b8; font-size: 0.9rem;">
+                        Placed on {{ order.created_at.strftime("%d %b %Y, %I:%M %p") }} &bull; {{ order.items|sum(attribute='quantity') }} items
+                    </p>
+                    <small style="color: #c4b5fd; display: inline-block; margin-top: 4px;">
+                        💳 {{ order.payment_method or 'Cash on Delivery' }}
+                    </small>
+                </div>
 
                 <div>
-                    <h3>Order #{{ order.order_number }}</h3>
-                    <p>{{ order.created_at.strftime("%d %b %Y") }}</p>
+                    <span class="status-badge {{ order.status|lower }}">
+                        {{ order.status }}
+                    </span>
                 </div>
-
-                <div class="order-status">
-                    {{ order.status }}
-                </div>
-
             </div>
 
             <div class="order-bottom">
+                <div>
+                    <span style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px;">Total Amount</span>
+                    <h2 style="color: #38bdf8; font-size: 1.5rem; margin: 0;">₹{{ "%.2f"|format(order.total_amount) }}</h2>
+                </div>
 
-                <h2>₹{{ "%.2f"|format(order.total_amount) }}</h2>
-
-                <a href="{{ url_for('order_details', order_id=order.id) }}"
-                   class="view-order-btn">
-
+                <a href="{{ url_for('order_details', order_id=order.id) }}" class="view-order-btn">
                     View Details →
-
                 </a>
-
             </div>
-
         </div>
-
         {% endfor %}
+    </div>
 
     {% else %}
-
-        <div class="empty-orders">
-
-            <h2>No Orders Yet</h2>
-
-            <p>You haven't placed any orders.</p>
-
-            <a href="{{ url_for('products') }}" class="shop-btn">
-
-                Start Shopping
-
-            </a>
-
-        </div>
-
+    <div class="empty-orders">
+        <div style="font-size: 3.5rem; margin-bottom: 15px;">📦</div>
+        <h2>No Orders Yet</h2>
+        <p>You haven't placed any orders yet. Discover our curated catalog today.</p>
+        <a href="{{ url_for('products') }}" class="shop-btn">
+            Start Shopping
+        </a>
+    </div>
     {% endif %}
 
 </div>
-
 {% endblock %}

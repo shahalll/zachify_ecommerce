@@ -14,6 +14,25 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
+
+def configure_test_database(target_app=app, target_db=db, uri="sqlite:///:memory:"):
+    """Isolates testing to an in-memory SQLite database so instance/zachify.db is never modified during test runs."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    target_app.config["TESTING"] = True
+    target_app.config["SQLALCHEMY_DATABASE_URI"] = uri
+
+    engine = create_engine(
+        uri,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    if "sqlalchemy" in target_app.extensions:
+        target_app.extensions["sqlalchemy"]._app_engines[target_app] = {None: engine}
+    return engine
+
+
 DEFAULT_ADMIN_EMAILS = {
     "mhdshahal3182005@gmail.com",
 }
@@ -90,15 +109,42 @@ def admin_required(f):
 
 
 def migrate_sqlite_schema():
-    """Safely adds missing columns to existing SQLite database without losing data."""
+    """Safely adds missing columns and tables to existing SQLite database without losing data."""
     try:
         inspector = inspect(db.engine)
-        if "user" in inspector.get_table_names():
-            columns = [col["name"] for col in inspector.get_columns("user")]
-            if "is_admin" not in columns:
-                with db.engine.connect() as conn:
+        table_names = inspector.get_table_names()
+        with db.engine.connect() as conn:
+            if "user" in table_names:
+                columns = [col["name"] for col in inspector.get_columns("user")]
+                if "is_admin" not in columns:
                     conn.execute(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0;"))
-                    conn.commit()
+
+            if "order" in table_names:
+                order_columns = [col["name"] for col in inspector.get_columns("order")]
+                order_fields_to_add = [
+                    ("shipping_full_name", "VARCHAR(120)"),
+                    ("shipping_email", "VARCHAR(120)"),
+                    ("shipping_phone", "VARCHAR(30)"),
+                    ("shipping_address", "VARCHAR(300)"),
+                    ("shipping_city", "VARCHAR(100)"),
+                    ("shipping_state", "VARCHAR(100)"),
+                    ("shipping_pin", "VARCHAR(20)"),
+                    ("payment_method", "VARCHAR(50) DEFAULT 'Cash on Delivery'"),
+                ]
+                for col_name, col_type in order_fields_to_add:
+                    if col_name not in order_columns:
+                        conn.execute(text(f'ALTER TABLE "order" ADD COLUMN {col_name} {col_type};'))
+
+            if "product" in table_names:
+                product_columns = [col["name"] for col in inspector.get_columns("product")]
+                if "stock" not in product_columns:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN stock INTEGER DEFAULT 0;"))
+
+            conn.commit()
+
+        if "review" not in table_names:
+            Review.__table__.create(db.engine, checkfirst=True)
+
         ensure_default_admins()
     except Exception as e:
         print(f"Migration notice: {e}")
@@ -138,6 +184,7 @@ class User(db.Model):
 
     wishlists = db.relationship("Wishlist", backref="user", lazy=True, cascade="all, delete-orphan")
     orders = db.relationship("Order", backref="user", lazy=True, cascade="all, delete-orphan")
+    reviews = db.relationship("Review", backref="user", lazy=True, cascade="all, delete-orphan")
 
 
 class Product(db.Model):
@@ -157,9 +204,22 @@ class Product(db.Model):
     stock = db.Column(db.Integer, default=0)
 
     wishlists = db.relationship("Wishlist", backref="product", lazy=True, cascade="all, delete-orphan")
+    reviews = db.relationship("Review", backref="product", lazy=True, cascade="all, delete-orphan")
+
+    @property
+    def average_rating(self):
+        if self.reviews and len(self.reviews) > 0:
+            return round(sum(r.rating for r in self.reviews) / len(self.reviews), 1)
+        return 0.0
+
+    @property
+    def review_count(self):
+        return len(self.reviews) if self.reviews else 0
 
     @property
     def effective_rating(self):
+        if self.reviews and len(self.reviews) > 0:
+            return round(sum(r.rating for r in self.reviews) / len(self.reviews), 1)
         base = 4.2
         if self.category.lower() == "electronics":
             base += 0.2
@@ -189,12 +249,41 @@ class Wishlist(db.Model):
     )
 
 
+class Review(db.Model):
+    __tablename__ = "review"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "product_id", name="uq_user_product_review"),
+    )
+
+
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     order_number = db.Column(db.String(50), unique=True, nullable=False)
-    status = db.Column(db.String(50), nullable=False, default="Processing")
+    status = db.Column(db.String(50), nullable=False, default="Pending")
     total_amount = db.Column(db.Float, nullable=False, default=0.0)
+
+    # Shipping details
+    shipping_full_name = db.Column(db.String(120), nullable=True)
+    shipping_email = db.Column(db.String(120), nullable=True)
+    shipping_phone = db.Column(db.String(30), nullable=True)
+    shipping_address = db.Column(db.String(300), nullable=True)
+    shipping_city = db.Column(db.String(100), nullable=True)
+    shipping_state = db.Column(db.String(100), nullable=True)
+    shipping_pin = db.Column(db.String(20), nullable=True)
+
+    # Payment details
+    payment_method = db.Column(db.String(50), nullable=True, default="Cash on Delivery")
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     items = db.relationship("OrderItem", backref="order", lazy=True, cascade="all, delete-orphan")
@@ -454,10 +543,217 @@ def products():
         sort_by=request.args.get("sort", "featured"),
     )
 
+def has_user_purchased_product(user_id, product_id):
+    """Verifies whether the customer has placed an order containing the product (excluding cancelled orders)."""
+    if not user_id:
+        return False
+    return (
+        OrderItem.query.join(Order, OrderItem.order_id == Order.id)
+        .filter(
+            Order.user_id == user_id,
+            OrderItem.product_id == product_id,
+            Order.status != "Cancelled",
+        )
+        .first()
+        is not None
+    )
+
+
 @app.route("/product/<int:id>")
 def product_detail(id):
     product = Product.query.get_or_404(id)
-    return render_template("product_details.html", product=product)
+    reviews = Review.query.filter_by(product_id=id).order_by(Review.created_at.desc()).all()
+
+    current_user = get_current_user()
+    has_purchased = has_user_purchased_product(current_user.id, id) if current_user else False
+    user_review = Review.query.filter_by(user_id=current_user.id, product_id=id).first() if current_user else None
+
+    # Calculate rating breakdown for 1 to 5 stars
+    rating_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for r in reviews:
+        if r.rating in rating_counts:
+            rating_counts[r.rating] += 1
+    total_reviews = len(reviews)
+    rating_percentages = {}
+    for star in range(1, 6):
+        rating_percentages[star] = round((rating_counts[star] / total_reviews * 100), 1) if total_reviews > 0 else 0
+
+    return render_template(
+        "product_details.html",
+        product=product,
+        reviews=reviews,
+        average_rating=product.average_rating,
+        review_count=total_reviews,
+        has_purchased=has_purchased,
+        user_review=user_review,
+        rating_counts=rating_counts,
+        rating_percentages=rating_percentages,
+    )
+
+
+@app.route("/product/<int:product_id>/review", methods=["POST"])
+def add_product_review(product_id):
+    current_user = get_current_user()
+    if not current_user:
+        flash("Please login to write a review.", "danger")
+        return redirect(url_for("login"))
+
+    product = Product.query.get_or_404(product_id)
+
+    # 1. Verify purchase
+    if not has_user_purchased_product(current_user.id, product_id):
+        flash("You can only review products you have purchased.", "warning")
+        return redirect(url_for("product_detail", id=product_id))
+
+    # 2. Check for duplicate review (1 review per product per customer)
+    existing_review = Review.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+    if existing_review:
+        flash("You have already reviewed this product. You can edit your existing review below.", "info")
+        return redirect(url_for("product_detail", id=product_id))
+
+    # 3. Validate Rating (Integer 1 to 5)
+    rating_raw = request.form.get("rating", "").strip()
+    try:
+        rating = int(rating_raw)
+        if rating < 1 or rating > 5:
+            flash("Rating must be between 1 and 5 stars.", "danger")
+            return redirect(url_for("product_detail", id=product_id))
+    except (ValueError, TypeError):
+        flash("Please select a valid star rating (1–5).", "danger")
+        return redirect(url_for("product_detail", id=product_id))
+
+    # 4. Validate Review Text
+    comment = request.form.get("comment", "").strip()
+    if not comment:
+        flash("Review comment cannot be empty.", "danger")
+        return redirect(url_for("product_detail", id=product_id))
+    if len(comment) < 3:
+        flash("Review comment must be at least 3 characters long.", "danger")
+        return redirect(url_for("product_detail", id=product_id))
+    if len(comment) > 1000:
+        flash("Review comment cannot exceed 1,000 characters.", "danger")
+        return redirect(url_for("product_detail", id=product_id))
+
+    # 5. Create Review
+    new_review = Review(
+        user_id=current_user.id,
+        product_id=product.id,
+        rating=rating,
+        comment=comment,
+    )
+    db.session.add(new_review)
+    db.session.commit()
+
+    flash("🎉 Thank you! Your review has been submitted successfully.", "success")
+    return redirect(url_for("product_detail", id=product_id))
+
+
+@app.route("/review/<int:review_id>/edit", methods=["GET", "POST"])
+def edit_review(review_id):
+    current_user = get_current_user()
+    if not current_user:
+        flash("Please login to edit your review.", "danger")
+        return redirect(url_for("login"))
+
+    review = Review.query.get_or_404(review_id)
+
+    # Ownership check: Customer must own this review
+    if review.user_id != current_user.id:
+        abort(403)
+
+    product = Product.query.get(review.product_id)
+
+    if request.method == "POST":
+        rating_raw = request.form.get("rating", "").strip()
+        try:
+            rating = int(rating_raw)
+            if rating < 1 or rating > 5:
+                flash("Rating must be between 1 and 5 stars.", "danger")
+                return render_template("edit_review.html", review=review, product=product)
+        except (ValueError, TypeError):
+            flash("Please select a valid star rating (1–5).", "danger")
+            return render_template("edit_review.html", review=review, product=product)
+
+        comment = request.form.get("comment", "").strip()
+        if not comment or len(comment) < 3:
+            flash("Review comment must be at least 3 characters long.", "danger")
+            return render_template("edit_review.html", review=review, product=product)
+        if len(comment) > 1000:
+            flash("Review comment cannot exceed 1,000 characters.", "danger")
+            return render_template("edit_review.html", review=review, product=product)
+
+        review.rating = rating
+        review.comment = comment
+        review.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        flash("Your review has been updated successfully!", "success")
+        return redirect(url_for("product_detail", id=review.product_id))
+
+    return render_template("edit_review.html", review=review, product=product)
+
+
+@app.route("/review/<int:review_id>/delete", methods=["POST"])
+def delete_review(review_id):
+    current_user = get_current_user()
+    if not current_user:
+        flash("Please login to manage reviews.", "danger")
+        return redirect(url_for("login"))
+
+    review = Review.query.get_or_404(review_id)
+    product_id = review.product_id
+
+    # Security check: User must own the review OR be an administrator
+    if review.user_id != current_user.id and not bool(current_user.is_admin):
+        abort(403)
+
+    db.session.delete(review)
+    db.session.commit()
+
+    flash("Review deleted successfully.", "success")
+    if current_user.is_admin and request.referrer and "admin/reviews" in request.referrer:
+        return redirect(url_for("admin_reviews"))
+    return redirect(url_for("product_detail", id=product_id))
+
+
+@app.route("/admin/reviews")
+@admin_required
+def admin_reviews():
+    search_query = request.args.get("q", "").strip()
+    rating_filter = request.args.get("rating", type=int)
+
+    query = Review.query.join(User).join(Product)
+
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                User.username.ilike(search_term),
+                User.email.ilike(search_term),
+                Product.name.ilike(search_term),
+                Review.comment.ilike(search_term),
+            )
+        )
+
+    if rating_filter and 1 <= rating_filter <= 5:
+        query = query.filter(Review.rating == rating_filter)
+
+    reviews = query.order_by(Review.created_at.desc()).all()
+
+    all_reviews = Review.query.all()
+    total_reviews = len(all_reviews)
+    avg_rating = round(sum(r.rating for r in all_reviews) / total_reviews, 1) if total_reviews > 0 else 0.0
+    five_star_count = sum(1 for r in all_reviews if r.rating == 5)
+
+    return render_template(
+        "admin_reviews.html",
+        reviews=reviews,
+        total_reviews=total_reviews,
+        avg_rating=avg_rating,
+        five_star_count=five_star_count,
+        search_query=search_query,
+        selected_rating=rating_filter,
+    )
 
 @app.route("/contact")
 def contact():
@@ -787,13 +1083,13 @@ def admin_orders():
 def admin_order_details(order_id):
     order = Order.query.get_or_404(order_id)
     allowed_statuses = [
+        "Pending",
+        "Confirmed",
         "Processing",
         "Packed",
-        "Confirmed",
         "Shipped",
         "Delivered",
         "Cancelled",
-        "Pending",
     ]
 
     if request.method == "POST":
@@ -816,10 +1112,11 @@ def admin_order_details(order_id):
 @app.route("/admin/order/<int:order_id>/status")
 @admin_required
 def change_order_status(order_id):
-
     order = Order.query.get_or_404(order_id)
 
     status_flow = [
+        "Pending",
+        "Confirmed",
         "Processing",
         "Packed",
         "Shipped",
@@ -827,16 +1124,13 @@ def change_order_status(order_id):
     ]
 
     if order.status in status_flow:
-
         current = status_flow.index(order.status)
-
         if current < len(status_flow) - 1:
-
             order.status = status_flow[current + 1]
-
             db.session.commit()
+            flash(f"Order #{order.order_number} advanced to '{order.status}'!", "success")
 
-    return redirect(url_for("admin_orders"))
+    return redirect(request.referrer or url_for("admin_orders"))
 
 
 
@@ -990,6 +1284,8 @@ def get_cart_summary():
         "discount": discount,
         "grand_total": grand_total,
     }
+
+
 @app.route("/cart")
 def cart():
     summary = get_cart_summary()
@@ -1008,53 +1304,157 @@ def cart():
 
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
+    if "user_id" not in session:
+        flash("Please login before accessing checkout.", "danger")
+        return redirect(url_for("login"))
 
+    current_user = get_current_user()
     summary = get_cart_summary()
 
     if not summary["products"]:
+        flash("Your cart is empty. Please add products before checking out.", "warning")
         return redirect(url_for("cart"))
 
     if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        email = request.form.get("email", "").strip()
+        phone = request.form.get("phone", "").strip()
+        address = request.form.get("address", "").strip()
+        city = request.form.get("city", "").strip()
+        state = request.form.get("state", "").strip()
+        pin = request.form.get("pin", "").strip()
+        payment_method_raw = request.form.get("payment_method", "cod").strip()
 
-        if "user_id" not in session:
-            flash("Please login before placing an order.", "danger")
-            return redirect(url_for("login"))
-
-        order = Order(
-            user_id=session["user_id"],
-            order_number="ZACH-" + uuid.uuid4().hex[:8].upper(),
-            total_amount=summary["grand_total"],
-            status="Processing"
-        )
-
-        db.session.add(order)
-        db.session.flush()
-
-        for item in summary["products"]:
-
-            product = item["product"]
-            quantity = item["quantity"]
-
-            order_item = OrderItem(
-                order_id=order.id,
-                product_id=product.id,
-                product_name=product.name,
-                product_image=product.image,
-                quantity=quantity,
-                unit_price=product.price,
-                total_price=product.price * quantity
+        # Validate required shipping fields
+        if not full_name or not phone or not address or not city or not state or not pin:
+            flash("Please fill in all required shipping and delivery fields.", "danger")
+            return render_template(
+                "checkout.html",
+                products=[item["product"] for item in summary["products"]],
+                cart=summary["cart"],
+                subtotal=summary["subtotal"],
+                shipping=summary["shipping"],
+                discount=summary["discount"],
+                grand_total=summary["grand_total"],
+                cart_items=summary["products"],
+                form_data=request.form,
+                current_user=current_user,
             )
 
-            db.session.add(order_item)
+        # Normalize human-readable payment method
+        payment_method_map = {
+            "cod": "Cash on Delivery",
+            "upi": "UPI",
+            "card": "Credit / Debit Card",
+            "cash on delivery": "Cash on Delivery",
+            "credit / debit card": "Credit / Debit Card",
+        }
+        payment_method = payment_method_map.get(payment_method_raw.lower(), payment_method_raw if payment_method_raw else "Cash on Delivery")
 
-        db.session.commit()
+        # Atomic Transaction for Order Creation & Stock Deduction
+        try:
+            cart_dict = session.get("cart", {})
+            if not cart_dict:
+                flash("Your cart is empty.", "warning")
+                return redirect(url_for("cart"))
 
-        session["cart"] = {}
-        session.modified = True
+            items_to_create = []
+            verified_subtotal = 0.0
 
-        flash("Order placed successfully!", "success")
+            # 1. Validate stock and calculate verified totals server-side
+            for pid_str, quantity_val in list(cart_dict.items()):
+                if not str(pid_str).isdigit():
+                    continue
+                quantity = int(quantity_val)
+                if quantity <= 0:
+                    continue
 
-        return redirect(url_for("dashboard"))
+                pid = int(pid_str)
+                product = Product.query.get(pid)
+
+                if not product:
+                    db.session.rollback()
+                    flash("A product in your cart is no longer available. Please review your cart.", "danger")
+                    return redirect(url_for("cart"))
+
+                if product.stock < quantity:
+                    db.session.rollback()
+                    flash(f"Insufficient stock available for '{product.name}'. Available: {product.stock}, requested: {quantity}.", "danger")
+                    return redirect(url_for("cart"))
+
+                item_subtotal = product.price * quantity
+                verified_subtotal += item_subtotal
+
+                items_to_create.append({
+                    "product": product,
+                    "quantity": quantity,
+                    "unit_price": product.price,
+                    "item_subtotal": item_subtotal,
+                })
+
+            if not items_to_create:
+                db.session.rollback()
+                flash("Your cart is empty.", "warning")
+                return redirect(url_for("cart"))
+
+            # Calculate server-side verified totals
+            verified_shipping = 0 if verified_subtotal >= 50000 else (0 if verified_subtotal == 0 else 299)
+            verified_discount = verified_subtotal * 0.10 if verified_subtotal >= 30000 else 0
+            verified_grand_total = verified_subtotal + verified_shipping - verified_discount
+
+            # 2. Create Order
+            order = Order(
+                user_id=session["user_id"],
+                order_number="ZACH-" + uuid.uuid4().hex[:8].upper(),
+                total_amount=verified_grand_total,
+                status="Pending",
+                shipping_full_name=full_name,
+                shipping_email=email if email else (current_user.email if current_user else None),
+                shipping_phone=phone,
+                shipping_address=address,
+                shipping_city=city,
+                shipping_state=state,
+                shipping_pin=pin,
+                payment_method=payment_method,
+            )
+
+            db.session.add(order)
+            db.session.flush()
+
+            # 3. Create OrderItems & Deduct Stock
+            for item_info in items_to_create:
+                prod = item_info["product"]
+                qty = item_info["quantity"]
+
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=prod.id,
+                    product_name=prod.name,
+                    product_image=prod.image,
+                    quantity=qty,
+                    unit_price=item_info["unit_price"],
+                    total_price=item_info["item_subtotal"],
+                )
+                db.session.add(order_item)
+
+                # Deduct inventory safely
+                prod.stock = max(0, prod.stock - qty)
+
+            # 4. Commit atomic transaction
+            db.session.commit()
+
+            # 5. Clear only user's session cart on success
+            session["cart"] = {}
+            session.modified = True
+
+            flash("🎉 Order placed successfully!", "success")
+            return redirect(url_for("order_success", order_id=order.id))
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Checkout transaction error: {e}")
+            flash("An unexpected error occurred while placing your order. Please try again.", "danger")
+            return redirect(url_for("checkout"))
 
     return render_template(
         "checkout.html",
@@ -1065,25 +1465,39 @@ def checkout():
         discount=summary["discount"],
         grand_total=summary["grand_total"],
         cart_items=summary["products"],
+        form_data={},
+        current_user=current_user,
     )
+
+
+@app.route("/order-success/<int:order_id>")
+def order_success(order_id):
+    if "user_id" not in session:
+        flash("Please login to view your order confirmation.", "danger")
+        return redirect(url_for("login"))
+
+    order = Order.query.filter_by(id=order_id, user_id=session["user_id"]).first_or_404()
+    return render_template("order_success.html", order=order)
+
+
 @app.route("/orders")
 def orders():
-
     if "user_id" not in session:
         flash("Please login first.", "danger")
         return redirect(url_for("login"))
 
-    orders = Order.query.filter_by(
+    user_orders = Order.query.filter_by(
         user_id=session["user_id"]
     ).order_by(Order.created_at.desc()).all()
 
     return render_template(
         "orders.html",
-        orders=orders
+        orders=user_orders
     )
+
+
 @app.route("/order/<int:order_id>")
 def order_details(order_id):
-
     if "user_id" not in session:
         flash("Please login first.", "danger")
         return redirect(url_for("login"))
@@ -1097,71 +1511,77 @@ def order_details(order_id):
         "order_detials.html",
         order=order
     )
+
+
 @app.route("/add_to_cart/<int:product_id>", methods=["GET", "POST"])
 def add_to_cart(product_id):
+    product = Product.query.get_or_404(product_id)
+
+    if product.stock <= 0:
+        flash(f"'{product.name}' is currently out of stock.", "danger")
+        return redirect(request.referrer or url_for("products"))
 
     cart = session.get("cart", {})
+    pid_str = str(product_id)
+    current_qty = cart.get(pid_str, 0)
 
-    product_id = str(product_id)
-
-    if product_id in cart:
-        cart[product_id] += 1
+    if current_qty + 1 > product.stock:
+        flash(f"Cannot add more units. Only {product.stock} available in stock for '{product.name}'.", "warning")
     else:
-        cart[product_id] = 1
-
-    session["cart"] = cart
-    session.modified = True
+        cart[pid_str] = current_qty + 1
+        session["cart"] = cart
+        session.modified = True
+        flash(f"Added '{product.name}' to your cart.", "success")
 
     return redirect(request.referrer or url_for("cart"))
+
+
 @app.route("/remove_from_cart/<int:product_id>", methods=["POST"])
 def remove_from_cart(product_id):
-
     cart = session.get("cart", {})
+    pid_str = str(product_id)
 
-    product_id = str(product_id)
+    if pid_str in cart:
+        del cart[pid_str]
+        session["cart"] = cart
+        session.modified = True
+        flash("Item removed from cart.", "info")
 
-    if product_id in cart:
-        del cart[product_id]
+    return redirect(url_for("cart"))
 
-    session["cart"] = cart
-
-    return redirect("/cart")
 
 @app.route("/increase_quantity/<int:product_id>", methods=["POST"])
 def increase_quantity(product_id):
-
+    product = Product.query.get_or_404(product_id)
     cart = session.get("cart", {})
+    pid_str = str(product_id)
 
-    print("Before:", cart)
+    if pid_str in cart:
+        current_qty = cart[pid_str]
+        if current_qty >= product.stock:
+            flash(f"Maximum available stock ({product.stock}) reached for '{product.name}'.", "warning")
+        else:
+            cart[pid_str] = current_qty + 1
+            session["cart"] = cart
+            session.modified = True
 
-    product_id = str(product_id)
+    return redirect(url_for("cart"))
 
-    if product_id in cart:
-        cart[product_id] += 1
-
-    session["cart"] = cart
-
-    print("After:", cart)
-
-    return redirect("/cart")
 
 @app.route("/decrease_quantity/<int:product_id>", methods=["POST"])
 def decrease_quantity(product_id):
-
     cart = session.get("cart", {})
+    pid_str = str(product_id)
 
-    product_id = str(product_id)
-
-    if product_id in cart:
-
-        if cart[product_id] > 1:
-            cart[product_id] -= 1
+    if pid_str in cart:
+        if cart[pid_str] > 1:
+            cart[pid_str] -= 1
         else:
-            del cart[product_id]
+            del cart[pid_str]
+        session["cart"] = cart
+        session.modified = True
 
-    session["cart"] = cart
-
-    return redirect("/cart")
+    return redirect(url_for("cart"))
 @app.route("/admin/product/<int:id>/delete", methods=["GET", "POST"])
 @app.route("/delete_product/<int:id>", methods=["GET", "POST"])
 @admin_required

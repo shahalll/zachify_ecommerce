@@ -21,7 +21,14 @@
         <div class="product-info">
             <h3><a href="{{ url_for('product_detail', id=product.id) }}" style="text-decoration: none; color: inherit;" onclick="event.stopPropagation();">{{ product.name }}</a></h3>
             <div class="rating">
-                ★★★★★ <span>({{ "%.1f"|format(product.effective_rating) }})</span>
+                <span style="color: #fbbf24; letter-spacing: 1px;">
+                    {% if product.review_count > 0 %}
+                        {{ "★" * (product.average_rating|round|int) }}{{ "☆" * (5 - (product.average_rating|round|int)) }}
+                    {% else %}
+                        ★★★★★
+                    {% endif %}
+                </span>
+                <span>({{ "%.1f"|format(product.effective_rating) }} · {{ product.review_count }} {% if product.review_count == 1 %}review{% else %}reviews{% endif %})</span>
             </div>
             <div class="price">₹{{ "%.2f"|format(product.price) if product.price is float else product.price }}</div>
             <p class="product-short-desc">

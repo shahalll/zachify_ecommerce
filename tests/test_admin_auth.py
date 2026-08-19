@@ -11,11 +11,7 @@ from make_admin import make_admin
 
 class AdminAuthTests(unittest.TestCase):
     def setUp(self):
-        ecommerce_app.app.config.update(
-            TESTING=True,
-            SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
-            SECRET_KEY="test_secret_key",
-        )
+        ecommerce_app.configure_test_database()
         self.client = ecommerce_app.app.test_client()
         with ecommerce_app.app.app_context():
             ecommerce_app.db.drop_all()
